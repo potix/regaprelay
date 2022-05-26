@@ -185,11 +185,12 @@ func (t *TcpHandler) onVibration(vibration *handler.GamepadVibration) {
 }
 
 func (t *TcpClient) Start() error {
-	t.gamepad.StartVibrationListener(t.onVibration)
         go t.reconnectLoop()
+	t.gamepad.StartVibrationListener(t.onVibration)
 }
 
 func (t *TcpClient) Stop() error {
+	t.gamepad.StopVibrationListener()
 	close(t.stopChan)
 	t.connMutex.Lock()
 	if t.conn != nil {

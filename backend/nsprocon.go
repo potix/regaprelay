@@ -6,3 +6,18 @@ package gamepad
 
 
 */
+
+
+
+
+
+
+
+
+
+
+
+func NewNsprocon(verbose bool) {
+	newSetup()
+
+}
