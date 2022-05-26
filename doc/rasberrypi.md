@@ -91,6 +91,8 @@
 1. power on
 1. login to rasberry pi
 
+# Setup
+
 ## usb gadget mode (USB OTG) setting
    ```
    sudo vi /boot/config.txt
