@@ -1,14 +1,92 @@
-# rasberry pi setup
+# Preparation
+
+## write rasberry pi image to sd card
 1. download rasberry pi imager
    - https://www.raspberrypi.com/software/
-2. run rasberry pi imager
-3. select image
-4. setting
+1. run rasberry pi imager
+1. select image
+1. setting
    - hostname
    - enable ssh
    - account
    - wifi
    - locale
-5. write image to sd card
-6. login external linux
+1. select device
+1. write image to sd card
+
+## resize sd card partition (on linux PC)
+1. attach sd card
+1. run parted
+   ```
+   parted /dev/<sd card device>
+   ```
+1. resize partation of sd card
+   ```
+   resizepart 2 <sd card capacity>GB
+   ```
+   
+## preboot setup (on linux PC)
+1. mount sd card
+   ```
+   mount <sd card device> /mnt
+   ```
+1. setup files in /mnt/boot
+   ```
+   touch /mnt/boot/ssh
+   vi /mnt/boot/wpa_supplicant.conf
+   ---
+   ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
+   country=JP
+   update_config=1
+   ap_scan=1
+
+   network={
+        ssid="<ssid>"
+        psk="<password>"
+        scan_ssid=1 
+        key_mgmt=WPA_PSK
+   }
+   ---
+   vi /mnt/etc/dhcpcd.conf
+   ---
+   .
+   .
+   .
+   interface eth0
+   static ip_address=<ip address>/24
+   static routers=<gateway address>
+   static domain_name_servers=<dns addresses>
+   ---
+   ```
+1. setup ssh
+   ```
+   mkdir /mnt/home/pi/.ssh
+   chmod 700 /mnt/home/pi/.ssh
+   vi /mnt/home/pi/.ssh/authorized_keys
+   ---
+   ssh-rsa <public key> foo@bar 
+   ---
+   chmod 600 /mnt/home/pi/.ssh/authorized_keys
+   chmown -R <id 1000 user>:<id 1000 group> /mnt/home/pi/.ssh
+   vi /mnt/etc/ssh/sshd_config
+   ---
+   .
+   .
+   .
+   #PermitRootLogin prohibit-password
+   PermitRootLogin no
+   .
+   .
+   .
+   #PasswordAuthentication yes
+   PasswordAuthentication no
+   .
+   .
+   .
+   ---
+   ``` 
+
+## boot rasberry pi
+1. attach sd card to rasberry pi 
+1. power on
 
