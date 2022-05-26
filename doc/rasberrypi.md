@@ -89,4 +89,24 @@
 ## boot rasberry pi
 1. attach sd card to rasberry pi 
 1. power on
+1. login to rasberry pi
 
+## usb gadget mode (USB OTG) setting
+   ```
+   sudo vi /boot/config.txt
+   ---
+   .
+   .
+   .
+   # Uncomment this to enable infrared communication.
+   #dtoverlay=gpio-ir,gpio_pin=17
+   #dtoverlay=gpio-ir-tx,gpio_pin=18
+   dtoverlay=dwc2
+   .
+   .
+   .
+   ---
+   echo "dwc2" | sudo tee -a /etc/modules
+　 echo "libcomposite" | sudo tee -a /etc/modules
+   sudo reboot
+   ```
