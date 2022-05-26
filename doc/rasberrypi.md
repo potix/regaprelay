@@ -90,8 +90,15 @@
 1. attach sd card to rasberry pi 
 1. power on
 1. login to rasberry pi
+1. apt update
+
 
 # Setup
+
+## install packages   
+   - golang
+     - I build from source code in my case.
+
 
 ## usb gadget mode (USB OTG) setting
    ```
