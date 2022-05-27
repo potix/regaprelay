@@ -1,4 +1,4 @@
-package gamepad
+package backend
 
 import (
 	"log"
@@ -57,14 +57,14 @@ type BackendIf interface {
 	Start() error
 	Stop()
 	UpdateState(*handler.GamepadState) error
-	Press(...ButtonName) error
-        Release(...ButtonName) error
-        Push(time.Duration, ...ButtonName) error
-	Repeat(time.Duration, time.Duration, ...ButtonName) error
+	Press([]ButtonName) error
+        Release([]ButtonName) error
+        Push([]ButtonName, time.Duration) error
+	Repeat([]ButtonName, time.Duration, time.Duration) error
         StickL(XDirection, float64, YDirection, float64, time.Duration) error
 	StickR(XDirection, float64, YDirection, float64, time.Duration) error
-	StickRotationLeft(time.Duration, float64, time.Duration) error
-        StickRotationRight(time.Duration, float64, time.Duration) error
+	RotationStickL(XDirection, time.Duration, float64, time.Duration) error
+        RotationStickR(XDirection, time.Duration, float64, time.Duration) error
 	StartVibrationListener(fn OnVibration)
 	StopVibrationListener()
 }

@@ -1,4 +1,4 @@
-package gamepad
+package backend
 
 //
 // XXX TODO
@@ -49,47 +49,47 @@ func (p *PS4Con) UpdateState(state *handler.GamepadState) error {
         return nil
 }
 
-func (p *PS4Con) Press(buttons ...ButtonName) error {
+func (p *PS4Con) Press(buttons []ButtonName) error {
 	// XXX TODO
         return nil
 }
 
-func (p *PS4Con) Release(buttons ...ButtonName) error {
+func (p *PS4Con) Release(buttons []ButtonName) error {
 	// XXX TODO
         return nil
 }
 
-func (p *PS4Con) Push(duration time.Duration, buttons ...ButtonName) error {
+func (p *PS4Con) Push(buttons []ButtonName, duration time.Duration) error {
 	// XXX TODO
         return nil
 }
 
-func (p *PS4Con) Repeat(interval time.Duration, duration time.Duration, buttons ...ButtonName) error {
+func (p *PS4Con) Repeat(buttons []ButtonName, interval time.Duration, duration time.Duration) error {
 	// XXX TODO
         return nil
 }
 
-func (p *PS4Con) StickL(xSir XDirection, xPower float64, yDir YDirection, yPower float64, duration time.Duration) error {
+func (p *PS4Con) StickL(xDir XDirection, xPower float64, yDir YDirection, yPower float64, duration time.Duration) error {
 	// XXX TODO
         return nil
 }
 
-func (p *PS4Con) StickR(xSir XDirection, xPower float64, yDir YDirection, yPower float64, duration time.Duration) error {
+func (p *PS4Con) StickR(xDir XDirection, xPower float64, yDir YDirection, yPower float64, duration time.Duration) error {
 	// XXX TODO
         return nil
 }
 
-func (p *PS4Con) StickRotationLeft(lapTime time.Duration, power float64, duration time.Duration) error {
+func (p *PS4Con) RotationStickL(xDir XDirection, lapTime time.Duration, power float64, duration time.Duration) error {
 	// XXX TODO
         return nil
 }
 
-func (p *PS4Con) StickRotationRight(lapTime time.Duration, power float64, duration time.Duration) error {
+func (p *PS4Con) RotationStickR(xDir XDirection, lapTime time.Duration, power float64, duration time.Duration) error {
 	// XXX TODO
         return nil
 }
 
-func NewPs4Con(verbose bool) *PS4Con {
+func NewPS4Con(verbose bool) *PS4Con {
         setupParams := &setup.UsbGadgetHidSetupParams{
                 ConfigsHome:     "/sys/kernel/config",
                 GadgetName:      "ps4con",

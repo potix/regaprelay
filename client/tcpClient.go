@@ -4,6 +4,7 @@ import (
 	"log"
 	"net"
 	"github.com/potix/regapweb/handler"
+	"github.com/potix/regaprelay/gamepad"
 	"sync"
 	"crypto/tls"
 	"bufio"
@@ -17,7 +18,7 @@ type tcpClientOptions struct {
 }
 
 func defaultTcpClientOptions() *tcpClientOptions {
-        return &tcpOptions {
+        return &tcpClientOptions {
                 verbose: false,
                 skipVerify: false,
         }
@@ -40,7 +41,7 @@ func TcpClientSkipVerify(skipVerify bool) TcpClientOption {
 type TcpClient struct {
 	verbose        bool
 	tlsConfig      tls.Config
-	gamepad        *Gamepad
+	gamepad        *gamepad.Gamepad
 	serverAddrPort string
 	connMutex      sync.Mutex
 	conn           *net.Conn

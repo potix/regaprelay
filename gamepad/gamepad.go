@@ -1,7 +1,6 @@
 package gamepad
 
 import (
-	"log"
 	"fmt"
 	"time"
 	"github.com/potix/regapweb/handler"
@@ -11,7 +10,8 @@ import (
 type GamepadModel int
 
 const (
-        ModelNSProcon GamepadModel = iota
+        ModelNSProCon GamepadModel = iota
+        ModelPS4Con
 )
 
 type gamepadOptions struct {
@@ -33,8 +33,9 @@ func GamepadVerbose(verbose bool) GamepadOption {
 }
 
 type Gamepad struct {
-	opts	*gamepadOptions,
-        backendIf backend.BackendIf,
+	verbose   bool
+	opts	  *gamepadOptions
+        backendIf backend.BackendIf
 }
 
 func (g *Gamepad) StartVibrationListener(fn backend.OnVibration) {
@@ -56,39 +57,39 @@ func (g *Gamepad) Release(buttons ...backend.ButtonName) error {
 	return g.backendIf.Release(buttons)
 }
 
-func (g *Gamepad) Push(buttons ...backend.ButtonName, duration time.MilliSecond) error {
+func (g *Gamepad) Push(duration time.Duration, buttons ...backend.ButtonName) error {
 	return g.backendIf.Push(buttons, duration)
 }
 
-func (g *Gamepad) Repeat(buttons ...backend.ButtonName, inteval time.MilliSecond, duration time.MilliSecond) error {
+func (g *Gamepad) Repeat(interval time.Duration, duration time.Duration, buttons ...backend.ButtonName,) error {
 	return g.backendIf.Repeat(buttons, interval, duration)
 }
 
-func (g *Gamepad) StickL(xDir backend.XDirection, xPower float64, yDir backend.YDirection, yPower float64, duration time.MilliSecon) error {
+func (g *Gamepad) StickL(xDir backend.XDirection, xPower float64, yDir backend.YDirection, yPower float64, duration time.Duration) error {
 	return g.backendIf.StickL(xDir, xPower, yDir, yPower, duration)
 }
 
-func (g *Gamepad) StickR(xdir backend.XDirection, xPower float64, ydir backend.YDirection, yPower float64, duration time.MilliSecon) error {
+func (g *Gamepad) StickR(xDir backend.XDirection, xPower float64, yDir backend.YDirection, yPower float64, duration time.Duration) error {
 	return g.backendIf.StickR(xDir, xPower, yDir, yPower, duration)
 }
 
-func (g *Gamepad) StickRotationLeft(lapTime time.MilliSecond, power float64, duration time.MilliSecond) error {
-	return g.backendIf.RotationLeft(laptime, power, duration)
+func (g *Gamepad) RotationStickL(xDir backend.XDirection, lapTime time.Duration, power float64, duration time.Duration) error {
+	return g.backendIf.RotationStickL(xDir, lapTime, power, duration)
 }
 
-func (g *Gamepad) StickRotationRight(speed time.MilliSecond, power float64, duration time.MilliSecon) error {
-	return g.backendIf.RotationRight(laptime, power, duration)
+func (g *Gamepad) RotationStickR(xDir backend.XDirection, lapTime time.Duration, power float64, duration time.Duration) error {
+	return g.backendIf.RotationStickR(xDir, lapTime, power, duration)
 }
 
 func (g *Gamepad) Start() error {
 	return g.backendIf.Start()
 }
 
-func (g *Gamepad) Stop() error {
-	return g.backendIf.Stop()
+func (g *Gamepad) Stop() {
+	g.backendIf.Stop()
 }
 
-func NewGamepad(model GamepadModel, opts ...TcpOption) (*Gamepad, error) {
+func NewGamepad(model GamepadModel, opts ...GamepadOption) (*Gamepad, error) {
         baseOpts := defaultGamepadOptions()
         for _, opt := range opts {
                 if opt == nil {
@@ -97,8 +98,10 @@ func NewGamepad(model GamepadModel, opts ...TcpOption) (*Gamepad, error) {
                 opt(baseOpts)
         }
 	var newBackendIf backend.BackendIf
-	if model == ModelNSProcon {
-		newBackendIf = backend.NewNSProcon(baseOpts.verbose)
+	if model == ModelNSProCon {
+		newBackendIf = backend.NewNSProCon(baseOpts.verbose)
+	} else if model == ModelPS4Con {
+		newBackendIf = backend.NewPS4Con(baseOpts.verbose)
 	}
 	if newBackendIf == nil {
 		return nil, fmt.Errorf("unsupported model: %v", model)
