@@ -48,20 +48,20 @@ func (g *Gamepad) UpdateState(state *handler.GamepadState) error {
 	return g.backendIf.UpdateState(state)
 }
 
-func (g *Gamepad) Press(button ...backend.ButtonName) error {
-	return g.backendIf.Press(button)
+func (g *Gamepad) Press(buttons ...backend.ButtonName) error {
+	return g.backendIf.Press(buttons)
 }
 
-func (g *Gamepad) Release(button ...backend.ButtonName) error {
-	return g.backendIf.Release(button)
+func (g *Gamepad) Release(buttons ...backend.ButtonName) error {
+	return g.backendIf.Release(buttons)
 }
 
-func (g *Gamepad) Push(button ...backend.ButtonName, duration time.MilliSecond) error {
-	return g.backendIf.Push(button, duration)
+func (g *Gamepad) Push(buttons ...backend.ButtonName, duration time.MilliSecond) error {
+	return g.backendIf.Push(buttons, duration)
 }
 
-func (g *Gamepad) Repeat(button ...backend.ButtonName, inteval time.MilliSecond, duration time.MilliSecond) error {
-	return g.backendIf.Repeat(button, interval, duration)
+func (g *Gamepad) Repeat(buttons ...backend.ButtonName, inteval time.MilliSecond, duration time.MilliSecond) error {
+	return g.backendIf.Repeat(buttons, interval, duration)
 }
 
 func (g *Gamepad) StickL(xDir backend.XDirection, xPower float64, yDir backend.YDirection, yPower float64, duration time.MilliSecon) error {
@@ -98,7 +98,7 @@ func NewGamepad(model GamepadModel, opts ...TcpOption) (*Gamepad, error) {
         }
 	var newBackendIf backend.BackendIf
 	if model == ModelNSProcon {
-		newBackendIf = backend.NewNsprocon(baseOpts.verbose)
+		newBackendIf = backend.NewNSProcon(baseOpts.verbose)
 	}
 	if newBackendIf == nil {
 		return nil, fmt.Errorf("unsupported model: %v", model)

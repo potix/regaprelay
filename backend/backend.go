@@ -55,8 +55,8 @@ type BackendIf interface {
 	Repeat(...ButtonName, time.MilliSecond, time.MilliSecond) error
         StickL(XDirection, float64, YDirection, float64, time.MilliSecond) error
 	StickR(XDirection, float64, YDirection, float64, time.MilliSecond) error
-	StickRotationLeft(time.MilliSecond, float64, time.MilliSecond) error {
-        StickRotationRight(time.MilliSecond, float64, time.MilliSecon) error {
+	StickRotationLeft(time.MilliSecond, float64, time.MilliSecond) error
+        StickRotationRight(time.MilliSecond, float64, time.MilliSecon) error
 	StartVibrationListener(fn onVibration)
 	StopVibrationListener()
 }
