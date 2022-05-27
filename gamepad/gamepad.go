@@ -33,7 +33,7 @@ func GamepadVerbose(verbose bool) GamepadOption {
 }
 
 type Gamepad struct {
-	opts	*gamepadOptions
+	opts	*gamepadOptions,
         backendIf backend.BackendIf,
 }
 

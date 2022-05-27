@@ -3,7 +3,7 @@ package gamepad
 import (
 	"log"
 	"time"
-	"github.com/potix/regaprelay/backend/setup"
+	"github.com/potix/regapweb/handler"
 )
 
 type ButtonName int
@@ -37,7 +37,7 @@ const (
 type XDirection int
 
 const (
-	XDirectionNeutral
+	XDirectionNeutral XDirection = iota
 	XDirectionLeft
 	XDirectionRgiht
 )
@@ -45,10 +45,12 @@ const (
 type YDirection int
 
 const (
-	YDirectionNeutral
+	YDirectionNeutral YDirection = iota
 	YDirectionUP
 	YDirectionDown
 )
+
+type OnVibration func(*handler.GamepadVibration)
 
 type BackendIf interface {
 	Setup() error
@@ -57,26 +59,24 @@ type BackendIf interface {
 	UpdateState(*handler.GamepadState) error
 	Press(...ButtonName) error
         Release(...ButtonName) error
-        Push(...ButtonName, time.MilliSecond) error
-	Repeat(...ButtonName, time.MilliSecond, time.MilliSecond) error
-        StickL(XDirection, float64, YDirection, float64, time.MilliSecond) error
-	StickR(XDirection, float64, YDirection, float64, time.MilliSecond) error
-	StickRotationLeft(time.MilliSecond, float64, time.MilliSecond) error
-        StickRotationRight(time.MilliSecond, float64, time.MilliSecon) error
-	StartVibrationListener(fn onVibration)
+        Push(time.Duration, ...ButtonName) error
+	Repeat(time.Duration, time.Duration, ...ButtonName) error
+        StickL(XDirection, float64, YDirection, float64, time.Duration) error
+	StickR(XDirection, float64, YDirection, float64, time.Duration) error
+	StickRotationLeft(time.Duration, float64, time.Duration) error
+        StickRotationRight(time.Duration, float64, time.Duration) error
+	StartVibrationListener(fn OnVibration)
 	StopVibrationListener()
 }
 
 type BaseBackend struct {
-	onVibrationChan         chan *handler.GamepadVibration
+	onVibrationCh           chan *handler.GamepadVibration
 	stopVibrationListenerCh chan int
 }
 
-type OnVibration func(*handler.GamepadVibration)
-
-func (b *BaseBackend) StartVibrationListener(fn onVibration) {
-	b.onVibrationCh := make(chan *handler.GamepadVibration)
-	b.stopVibrationListenerCh := make(chan int)
+func (b *BaseBackend) StartVibrationListener(fn OnVibration) {
+	b.onVibrationCh = make(chan *handler.GamepadVibration)
+	b.stopVibrationListenerCh = make(chan int)
         go func() {
                 log.Printf("start vibration listener")
                 for {
@@ -98,7 +98,7 @@ func (b *BaseBackend) StopVibrationListener() {
 }
 
 func (b *BaseBackend) sendVibration(vibration *handler.GamepadVibration) {
-	if b.onVibrationChan != nil {
+	if b.onVibrationCh != nil {
 		b.onVibrationCh <- vibration
 	}
 }

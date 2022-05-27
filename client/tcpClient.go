@@ -89,7 +89,7 @@ func (t *TcpClient) communicationLoop(conn *net.Conn) error {
         go t.startPingLoop(conn, pingStopChan)
         defer close(pingStopChan)
 	msgBytes := make([]byte, 0, 2048)
-	rbufio := func NewReader(conn)
+	rbufio := bufio.NewReader(conn)
 	for {
 		patialMsgBytes, isPrefix, err = rbufio.ReadLine()
 		if err != nil {
@@ -98,7 +98,7 @@ func (t *TcpClient) communicationLoop(conn *net.Conn) error {
 			} else {
 				return fmt.Errorf("read error: %w", err)
 			}
-		else if isPrefix {
+		} else if isPrefix {
 			// patial message
 			msgBytes = append(msgBytes, patialMsgBytes...)
 			continue
