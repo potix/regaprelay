@@ -44,7 +44,7 @@ type TcpClient struct {
 	verbose        bool
 	tlsConfig      *tls.Config
 	gamepad        *gamepad.Gamepad
-	serverAddrPort string
+	serverHostPort string
 	connMutex      sync.Mutex
 	conn           net.Conn
 	stopCh         chan int
@@ -152,7 +152,7 @@ func (t *TcpClient) reconnectLoop() {
 		case <-t.stopCh:
 			log.Printf("stop reconnect loop")
 		}
-		conn, err := tls.Dial("tcp", t.serverAddrPort, t.tlsConfig)
+		conn, err := tls.Dial("tcp", t.serverHostPort, t.tlsConfig)
 		if err != nil {
 			log.Printf("can not connect to tcp server: %v", err)
 			time.Sleep(500 * time.Millisecond)
@@ -209,7 +209,7 @@ func (t *TcpClient) Stop() {
 	t.connMutex.Unlock()
 }
 
-func NewTcpClient(serverAddrPort string, gamepad *gamepad.Gamepad, opts ...TcpClientOption) (*TcpClient, error) {
+func NewTcpClient(serverHostPort string, gamepad *gamepad.Gamepad, opts ...TcpClientOption) (*TcpClient, error) {
         baseOpts := defaultTcpClientOptions()
         for _, opt := range opts {
                 if opt == nil {
@@ -220,7 +220,7 @@ func NewTcpClient(serverAddrPort string, gamepad *gamepad.Gamepad, opts ...TcpCl
 	conf := &tls.Config{
 		InsecureSkipVerify: baseOpts.skipVerify,
 	}
-	conn, err := tls.Dial("tcp", serverAddrPort, conf)
+	conn, err := tls.Dial("tcp", serverHostPort, conf)
 	if err != nil {
 		return nil, fmt.Errorf("can not connect server: %w", err)
 	}
@@ -229,7 +229,7 @@ func NewTcpClient(serverAddrPort string, gamepad *gamepad.Gamepad, opts ...TcpCl
                 verbose: baseOpts.verbose,
                 tlsConfig: conf,
                 gamepad: gamepad,
-		serverAddrPort: serverAddrPort,
+		serverHostPort: serverHostPort,
 		conn: nil,
 		stopCh: make(chan int),
         }, nil
