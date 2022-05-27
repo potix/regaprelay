@@ -1,6 +1,7 @@
 package client
 
 import (
+	"fmt"
 	"log"
 	"net"
 	"github.com/potix/regapweb/handler"
@@ -9,6 +10,7 @@ import (
 	"crypto/tls"
 	"bufio"
 	"io"
+	"time"
 	"encoding/json"
 )
 
@@ -40,12 +42,12 @@ func TcpClientSkipVerify(skipVerify bool) TcpClientOption {
 
 type TcpClient struct {
 	verbose        bool
-	tlsConfig      tls.Config
+	tlsConfig      *tls.Config
 	gamepad        *gamepad.Gamepad
 	serverAddrPort string
 	connMutex      sync.Mutex
-	conn           *net.Conn
-	stopChan       chan int
+	conn           net.Conn
+	stopCh         chan int
 }
 
 func (t *TcpClient) safeConnWrite(msgBytes []byte) error  {
@@ -55,13 +57,14 @@ func (t *TcpClient) safeConnWrite(msgBytes []byte) error  {
 		log.Printf("no connection")
 		return nil
 	}
-	 _, err = conn.Write(msgBytes)
+	 _, err := t.conn.Write(msgBytes)
 	if err != nil {
 		return fmt.Errorf("can not write message: %w", err)
 	}
+	return nil
 }
 
-func (h *TcpClient) startPingLoop(conn *net.Conn, pingLoopStopChan chan int) {
+func (h *TcpClient) startPingLoop(conn net.Conn, pingLoopStopChan chan int) {
         ticker := time.NewTicker(10 * time.Second)
         defer ticker.Stop()
         for {
@@ -75,7 +78,7 @@ func (h *TcpClient) startPingLoop(conn *net.Conn, pingLoopStopChan chan int) {
                                 log.Printf("can not unmarshal to json: %v", err)
                                 break
                         }
-                        err = conn.Write(conn, msgBytes)
+                        _, err = conn.Write(msgBytes)
                         if err != nil {
                                 log.Printf("can not write ping message: %v", err)
                         }
@@ -85,14 +88,14 @@ func (h *TcpClient) startPingLoop(conn *net.Conn, pingLoopStopChan chan int) {
         }
 }
 
-func (t *TcpClient) communicationLoop(conn *net.Conn) error {
+func (t *TcpClient) communicationLoop(conn net.Conn) error {
         pingStopChan := make(chan int)
         go t.startPingLoop(conn, pingStopChan)
         defer close(pingStopChan)
 	msgBytes := make([]byte, 0, 2048)
 	rbufio := bufio.NewReader(conn)
 	for {
-		patialMsgBytes, isPrefix, err = rbufio.ReadLine()
+		patialMsgBytes, isPrefix, err := rbufio.ReadLine()
 		if err != nil {
 			if err == io.EOF {
 				return nil
@@ -120,17 +123,21 @@ func (t *TcpClient) communicationLoop(conn *net.Conn) error {
 					log.Printf("error vibration request: %v", msg.Error)
 				}
 			} else if msg.Command == "stateRequest" {
-				t.gamepad.UpdateState(msg.GamepadState)
-				resMsg := &gamepadMessage{
-					Command: "stateResponse",
-					Error: "",
+				t.gamepad.UpdateState(msg.State)
+				resMsg := &handler.GamepadMessage{
+					CommonGamepadMessage: &handler.CommonGamepadMessage{
+						Command: "stateResponse",
+						Error: "",
+					},
+					State: nil,
+					Vibration: nil,
 				}
-				resMsgBytes, err := json.Marshal(res)
+				resMsgBytes, err := json.Marshal(resMsg)
 				if err != nil {
 					log.Printf("can not unmarshal to json in communicationLoop: %v", err)
 					continue
 				}
-				err = conn.Write(conn, resMsgBytes)
+				_, err = conn.Write(resMsgBytes)
 				if err != nil {
 					log.Printf("can not write state response message: %v", err)
 				}
@@ -139,14 +146,13 @@ func (t *TcpClient) communicationLoop(conn *net.Conn) error {
 	}
 }
 
-func (t *TcpClient) reconnectLoop() error {
+func (t *TcpClient) reconnectLoop() {
 	for {
 		select {
-		case <-stopCh:
+		case <-t.stopCh:
 			log.Printf("stop reconnect loop")
-			return
 		}
-		conn, err := tls.Dial("tcp", "127.0.0.1:4430", conf)
+		conn, err := tls.Dial("tcp", t.serverAddrPort, t.tlsConfig)
 		if err != nil {
 			log.Printf("can not connect to tcp server: %v", err)
 			time.Sleep(500 * time.Millisecond)
@@ -156,7 +162,7 @@ func (t *TcpClient) reconnectLoop() error {
 		t.connMutex.Lock()
 		t.conn = conn
 		t.connMutex.Unlock()
-		err = communicationLoop(conn)
+		err = t.communicationLoop(conn)
 		if err != nil {
 			log.Printf("communication error: %v", err)
 		}
@@ -167,10 +173,12 @@ func (t *TcpClient) reconnectLoop() error {
 	}
 }
 
-func (t *TcpHandler) onVibration(vibration *handler.GamepadVibration) {
+func (t *TcpClient) onVibration(vibration *handler.GamepadVibration) {
 	msg := &handler.GamepadMessage {
-		Command: "vibrationRequest",
-		Error: "",
+	        CommonGamepadMessage: &handler.CommonGamepadMessage{
+			Command: "vibrationRequest",
+			Error: "",
+		},
 		State: nil,
 		Vibration: vibration,
 	}
@@ -188,11 +196,12 @@ func (t *TcpHandler) onVibration(vibration *handler.GamepadVibration) {
 func (t *TcpClient) Start() error {
         go t.reconnectLoop()
 	t.gamepad.StartVibrationListener(t.onVibration)
+	return nil
 }
 
-func (t *TcpClient) Stop() error {
+func (t *TcpClient) Stop() {
 	t.gamepad.StopVibrationListener()
-	close(t.stopChan)
+	close(t.stopCh)
 	t.connMutex.Lock()
 	if t.conn != nil {
 		t.conn.SetReadDeadline(time.Now())
@@ -200,7 +209,7 @@ func (t *TcpClient) Stop() error {
 	t.connMutex.Unlock()
 }
 
-func NewTcpClient(serverAddrPort string, gamepad *Gamepad, opts ...TcpOption) (*TcpHandler, error) {
+func NewTcpClient(serverAddrPort string, gamepad *gamepad.Gamepad, opts ...TcpClientOption) (*TcpClient, error) {
         baseOpts := defaultTcpClientOptions()
         for _, opt := range opts {
                 if opt == nil {
@@ -221,8 +230,8 @@ func NewTcpClient(serverAddrPort string, gamepad *Gamepad, opts ...TcpOption) (*
                 tlsConfig: conf,
                 gamepad: gamepad,
 		serverAddrPort: serverAddrPort,
-		conn: *net.Conn,
-		stopChan: make(chan int),
+		conn: nil,
+		stopCh: make(chan int),
         }, nil
 }
 

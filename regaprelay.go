@@ -16,8 +16,8 @@ type regaprelayTcpClientConfig struct {
 	SkipVerify     bool   `toml:"skipVerify`
 }
 
-type regaprelayGamepadConfig {
-	Model string `toml:model`
+type regaprelayGamepadConfig struct {
+	Model gamepad.GamepadModel `toml:model`
 }
 
 type regaprelayLogConfig struct {
@@ -35,7 +35,7 @@ type commandArguments struct {
         configFile string
 }
 
-func verboseLoadedConfig(config *regapwebConfig) {
+func verboseLoadedConfig(config *regaprelayConfig) {
         if !config.Verbose {
                 return
         }
@@ -55,12 +55,12 @@ func main() {
         if err != nil {
                 log.Fatalf("can not create configurator: %v", err)
         }
-        var conf regapwebConfig
+        var conf regaprelayConfig
         err = cf.Load(&conf)
         if err != nil {
                 log.Fatalf("can not load config: %v", err)
         }
-        if conf.HttpServer == nil || conf.HttpHandler == nil || conf.TcpServer == nil || conf.TcpHandler == nil {
+        if conf.TcpClient == nil || conf.Gamepad == nil {
                 log.Fatalf("invalid config")
         }
         if conf.Log != nil && conf.Log.UseSyslog {

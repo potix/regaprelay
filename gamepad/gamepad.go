@@ -7,11 +7,11 @@ import (
 	"github.com/potix/regaprelay/backend"
 )
 
-type GamepadModel int
+type GamepadModel string
 
 const (
-        ModelNSProCon GamepadModel = iota
-        ModelPS4Con
+        ModelNSProCon GamepadModel = "nsprocon"
+        ModelPS4Con                = "ps4con"
 )
 
 type gamepadOptions struct {

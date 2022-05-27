@@ -3,7 +3,7 @@ module github.com/potix/regaprelay
 go 1.18
 
 require (
-	github.com/potix/regapweb v0.0.0-20220526122428-f55258ab1e66
+	github.com/potix/regapweb v0.0.0-20220527030433-929894991c15
 	github.com/potix/utils/configurator v0.0.0-20220526072133-6372ecc4641d
 	github.com/potix/utils/signal v0.0.0-20220526072133-6372ecc4641d
 )
