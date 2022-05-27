@@ -1,5 +1,11 @@
 package gamepad
 
+import (
+	"log"
+	"time"
+	"github.com/potix/regaprelay/backend/setup"
+)
+
 type ButtonName int
 
 const (
@@ -69,8 +75,8 @@ type BaseBackend struct {
 type OnVibration func(*handler.GamepadVibration)
 
 func (b *BaseBackend) StartVibrationListener(fn onVibration) {
-	b.onVibrationCh = make(chan *handler.GamepadVibration)
-	b.stopVibrationListenerCh: = make(chan int)
+	b.onVibrationCh := make(chan *handler.GamepadVibration)
+	b.stopVibrationListenerCh := make(chan int)
         go func() {
                 log.Printf("start vibration listener")
                 for {

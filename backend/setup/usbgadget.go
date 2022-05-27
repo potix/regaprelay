@@ -1,5 +1,9 @@
 package setup
 
+import (
+
+)
+
 // ==============================
 // get usb hid device information
 // ==============================
@@ -10,15 +14,8 @@ package setup
 // - get report descriptor
 // sudo usbhid-dump -d <idProduct>:<idVendor>
 
-type UsbGadgetHidInstName string
-
-const (
-        NSProConUGHIName UsbGadgetHidInstName = "usb0"
-        PS4ConUGHIName                        = "usb1"
-)
-
 const usbGadgetDir = "usb_gadget"
-const usbDevCon = "UDC"
+const usbDevCon    = "UDC"
 
 type UsbGadgetHidSetupParams struct {
 	configsHome     string
@@ -41,7 +38,7 @@ type UsbGadgetHidSetupParams struct {
 	bmAttributes    string
 	maxPower        string
 	functionName    string
-	instanceName    UsbGadgetHidInstName
+	instanceName    string
 	protocol        string
 	subclass        string
 	reportLength    string
@@ -49,10 +46,13 @@ type UsbGadgetHidSetupParams struct {
 }
 
 func UsbGadgetHidSetup(params *UsbGadgetHidSetupParams) error {
+	return nil
+}
+
+func UsbGadgetHidEnable(params *UsbGadgetHidSetupParams) error {
+	return nil
 }
 
 func UsbGadgetHidDisable(params *UsbGadgetHidSetupParams) error {
-}
-
-func UsbGadgetHidDisable(params *UsbGadgetHidSetupParams) error {
+	return nil
 }

@@ -7,6 +7,13 @@ package gamepad
 // Perhaps I will never implement this in my lifetime.
 //
 
+import(
+        "fmt"
+        "log"
+        "time"
+	"github.com/potix/regaprelay/backend/setup"
+)
+
 type PS4Con struct  {
 	BaseBackend
 	setupParams *setup.UsbGadgetHidSetupParams
@@ -84,7 +91,7 @@ func NewPs4Con(verbose bool) *PS4Con {
                 BmAttributes:    "0xc0",
                 MaxPower:        "500mA",
                 FunctionName:    "hid",
-                InstanceName:    PS4ConUGHIName,
+                InstanceName:    "usb0",
                 Protocol:        "0",
                 Subclass:        "0",
                 ReportLength:    "499",

@@ -5,8 +5,8 @@ import (
         "flag"
         "github.com/potix/utils/signal"
         "github.com/potix/utils/configurator"
-        "github.com/potix/regapweb/gamepad"
-        "github.com/potix/regapweb/client"
+        "github.com/potix/regaprelay/gamepad"
+        "github.com/potix/regaprelay/client"
         "log"
         "log/syslog"
 )

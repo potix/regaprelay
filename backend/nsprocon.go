@@ -1,5 +1,12 @@
 package gamepad
 
+import(
+	"fmt"
+	"log"
+	"time"
+	"github.com/potix/regaprelay/backend/setup"
+)
+
 type NSProCon struct  {
 	BaseBackend
 	setupParams *setup.UsbGadgetHidSetupParams
@@ -77,7 +84,7 @@ func NewNSProCon(verbose bool) *NSProcon {
 		bmAttributes:    "0xa0",
 		maxPower:        "500mA",
 		functionName:    "hid",
-		instanceName:    setup.NSProConUGHIName,
+		instanceName:    "usb0",
 		protocol:        "0",
 		subclass:        "0",
 		reportLength:    "203",
