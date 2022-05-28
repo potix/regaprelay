@@ -45,7 +45,7 @@ func (g *Gamepad) StopVibrationListener() {
 	g.backendIf.StopVibrationListener()
 }
 
-func (g *Gamepad) UpdateState(state *handler.GamepadState) error {
+func (g *Gamepad) UpdateState(state *handler.GamepadStateMessage) error {
 	return g.backendIf.UpdateState(state)
 }
 

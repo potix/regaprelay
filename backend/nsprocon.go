@@ -37,8 +37,9 @@ func (n *NSProCon) Stop() {
 	}
 }
 
-func (n *NSProCon) UpdateState(state *handler.GamepadState) error {
+func (n *NSProCon) UpdateState(state *handler.GamepadStateMessage) error {
 	// XXX TODO
+	log.Printf("state = %+v", state)
 	return nil
 }
 

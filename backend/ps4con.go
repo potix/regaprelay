@@ -44,7 +44,7 @@ func (p *PS4Con) Stop() {
         }
 }
 
-func (p *PS4Con) UpdateState(state *handler.GamepadState) error {
+func (p *PS4Con) UpdateState(state *handler.GamepadStateMessage) error {
 	// XXX TODO
         return nil
 }

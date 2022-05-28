@@ -50,13 +50,13 @@ const (
 	YDirectionDown
 )
 
-type OnVibration func(*handler.GamepadVibration)
+type OnVibration func(*handler.GamepadVibrationMessage)
 
 type BackendIf interface {
 	Setup() error
 	Start() error
 	Stop()
-	UpdateState(*handler.GamepadState) error
+	UpdateState(*handler.GamepadStateMessage) error
 	Press([]ButtonName) error
         Release([]ButtonName) error
         Push([]ButtonName, time.Duration) error
@@ -70,12 +70,12 @@ type BackendIf interface {
 }
 
 type BaseBackend struct {
-	onVibrationCh           chan *handler.GamepadVibration
+	onVibrationCh           chan *handler.GamepadVibrationMessage
 	stopVibrationListenerCh chan int
 }
 
 func (b *BaseBackend) StartVibrationListener(fn OnVibration) {
-	b.onVibrationCh = make(chan *handler.GamepadVibration)
+	b.onVibrationCh = make(chan *handler.GamepadVibrationMessage)
 	b.stopVibrationListenerCh = make(chan int)
         go func() {
                 log.Printf("start vibration listener")
@@ -97,7 +97,7 @@ func (b *BaseBackend) StopVibrationListener() {
 	}
 }
 
-func (b *BaseBackend) sendVibration(vibration *handler.GamepadVibration) {
+func (b *BaseBackend) sendVibration(vibration *handler.GamepadVibrationMessage) {
 	if b.onVibrationCh != nil {
 		b.onVibrationCh <- vibration
 	}
