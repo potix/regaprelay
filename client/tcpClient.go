@@ -10,7 +10,6 @@ import (
 	"crypto/tls"
 	"crypto/sha256"
 	"bufio"
-	"io"
 	"time"
 	"encoding/json"
 )
@@ -64,11 +63,7 @@ func (t *TcpClient) safeConnWrite(msgBytes []byte) error  {
 	}
 	 _, err := t.conn.Write(msgBytes)
 	if err != nil {
-               if err == io.EOF {
-                        return nil
-                } else {
-			return fmt.Errorf("can not write message: %w", err)
-		}
+		return fmt.Errorf("can not write message: %w", err)
 	}
 	return nil
 }
@@ -90,11 +85,8 @@ func (h *TcpClient) startPingLoop(conn net.Conn, pingLoopStopChan chan int) {
 			msgBytes = append(msgBytes, byte('\n'))
                         _, err = conn.Write(msgBytes)
                         if err != nil {
-				if err == io.EOF {
-					return
-				} else {
-					log.Printf("can not write ping message: %v", err)
-				}
+				log.Printf("can not write ping message: %v", err)
+				return
                         }
                 case <-pingLoopStopChan:
                         return
@@ -103,7 +95,6 @@ func (h *TcpClient) startPingLoop(conn net.Conn, pingLoopStopChan chan int) {
 }
 
 func (t *TcpClient) handshake(conn net.Conn) (string, error) {
-	log.Printf("start handshake")
 	var remoteGamepadId string
 	msg := &handler.TcpClientRegisterRequest{
 		CommonMessage: &handler.CommonMessage{
@@ -115,7 +106,6 @@ func (t *TcpClient) handshake(conn net.Conn) (string, error) {
 	if err != nil {
 		return remoteGamepadId, fmt.Errorf("can not marshal to json in handshake: %w", err)
 	}
-log.Printf("send msg = %v", string(msgBytes))
 	msgBytes = append(msgBytes, byte('\n'))
 	_, err = conn.Write(msgBytes)
 	if err != nil {
@@ -138,7 +128,6 @@ log.Printf("send msg = %v", string(msgBytes))
 		} else {
 			// entire message
 			msgBytes = append(msgBytes, patialMsgBytes...)
-log.Printf("recieve entire msg = %v", string(msgBytes))
 			var msg handler.GamepadMessage
 			if err := json.Unmarshal(msgBytes, &msg); err != nil {
 				msgBytes = msgBytes[:0]
@@ -159,11 +148,16 @@ log.Printf("recieve entire msg = %v", string(msgBytes))
 }
 
 func (t *TcpClient) communicationLoop(conn net.Conn) error {
-	log.Printf("start communication loop")
+	if t.verbose {
+		log.Printf("start handshake")
+	}
         remoteGamepadId, err := t.handshake(conn)
         if err != nil {
                 return fmt.Errorf("can not handshakea: %w", err)
         }
+	if t.verbose {
+		log.Printf("end handshake")
+	}
 	t.remoteGamepadId = remoteGamepadId
 	log.Printf("remoteGamepadId = %v", t.remoteGamepadId)
 	conn.SetDeadline(time.Time{})
@@ -175,12 +169,7 @@ func (t *TcpClient) communicationLoop(conn net.Conn) error {
 	for {
 		patialMsgBytes, isPrefix, err := rbufio.ReadLine()
 		if err != nil {
-			if err == io.EOF {
-				return nil
-			} else {
-				log.Printf("can not read message: %v", err)
-				continue
-			}
+			return fmt.Errorf("can not read message: %v", err)
 		} else if isPrefix {
 			// patial message
 			msgBytes = append(msgBytes, patialMsgBytes...)
@@ -196,6 +185,9 @@ func (t *TcpClient) communicationLoop(conn net.Conn) error {
 			}
 			msgBytes = msgBytes[:0]
 			if msg.Command == "ping" {
+				if t.verbose {
+					log.Printf("recieved ping")
+				}
 				continue
 			} else if msg.Command == "vibrationResponse" {
 				if msg.Error != "" {
@@ -224,11 +216,7 @@ func (t *TcpClient) communicationLoop(conn net.Conn) error {
 				resMsgBytes = append(resMsgBytes, byte('\n'))
 				_, err = conn.Write(resMsgBytes)
 				if err != nil {
-					if err == io.EOF {
-                                                return nil
-                                        } else {
-						log.Printf("can not write state response message: %v", err)
-					}
+                                        return fmt.Errorf("can not write state response message: %v", err)
 				}
 			}
 		}
