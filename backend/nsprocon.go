@@ -15,18 +15,24 @@ type NSProCon struct  {
 }
 
 func (n *NSProCon) Setup() error {
-	err := setup.UsbGadgetHidSetup(n.setupParams)
+	err := setup.UsbGadgetHidCleanup(n.setupParams)
 	if err != nil {
-		return fmt.Errorf("setup error in nsprocon: %w", err)
+		return fmt.Errorf("can not cleanup usb gadget hid device in nsprocon: %w", err)
 	}
+	time.Sleep(500 * time.Millisecond)
+	err = setup.UsbGadgetHidSetup(n.setupParams)
+	if err != nil {
+		return fmt.Errorf("can not setup usb gadget hid device in nsprocon: %w", err)
+	}
+	err = setup.UsbGadgetHidEnable(n.setupParams)
+	if err != nil {
+		return fmt.Errorf("can not enable usb gadget hid device in nsprocon: %w", err)
+	}
+	time.Sleep(500 * time.Millisecond)
 	return nil
 }
 
 func (n *NSProCon) Start() error {
-	err := setup.UsbGadgetHidEnable(n.setupParams)
-	if err != nil {
-		return fmt.Errorf("can not enable usb gadget hid device in nsprocon: %w", err)
-	}
 	return nil
 }
 
@@ -34,6 +40,10 @@ func (n *NSProCon) Stop() {
 	err := setup.UsbGadgetHidDisable(n.setupParams)
 	if err != nil {
 		log.Printf("can not disable usb gadget hid device in nsprocon: %v", err)
+	}
+	err = setup.UsbGadgetHidCleanup(n.setupParams)
+	if err != nil {
+		log.Printf("can not cleanup usb gadget hid device in nsprocon: %w", err)
 	}
 }
 
@@ -87,8 +97,8 @@ func NewNSProCon(verbose bool, configsHome string, udc string) *NSProCon {
 	setupParams := &setup.UsbGadgetHidSetupParams{
 		ConfigsHome:     configsHome,
 		GadgetName:      "nsprocon",
-		IdProduct:       "0x057e",
-		IdVendor:        "0x2009",
+		IdProduct:       "0x2009",
+		IdVendor:        "0x057e",
 		BcdDevice:       "0x0200",
 		BcdUsb:          "0x0200",
 		BMaxPacketSize0: "64",

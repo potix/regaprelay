@@ -93,8 +93,8 @@ func NewPS4Con(verbose bool, configsHome string, udc string) *PS4Con {
         setupParams := &setup.UsbGadgetHidSetupParams{
                 ConfigsHome:     configsHome,
                 GadgetName:      "ps4con",
-                IdProduct:       "0x054c",
-                IdVendor:        "0x05c4",
+                IdProduct:       "0x05c4",
+                IdVendor:        "0x054c",
                 BcdDevice:       "0x0100",
                 BcdUsb:          "0x0200",
                 BMaxPacketSize0: "64",

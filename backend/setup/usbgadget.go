@@ -122,8 +122,7 @@ func getUDC() (string, error) {
 	return files[0].Name(), nil
 }
 
-
-func UsbGadgetHidSetup(params *UsbGadgetHidSetupParams) error {
+func UsbGadgetHidCleanup(params *UsbGadgetHidSetupParams) error {
 	// if configsHome is empty, assume /sys/kernel/config as configsHome
 	if params.ConfigsHome == "" {
 		params.ConfigsHome = "/sys/kernel/config"
@@ -140,7 +139,6 @@ func UsbGadgetHidSetup(params *UsbGadgetHidSetupParams) error {
 	functionsDir := path.Join(gadgetDir, "functions", params.FunctionName + "." + params.InstanceName)
 	// e.g. /sys/kernel/config/usb_gadget/<name>/configs/c.1/hid.usb0
 	configsFunctionDir := path.Join(configsDir, params.FunctionName + "." + params.InstanceName)
-
 	// cleanup
 	err := remove(configsFunctionDir)
 	if err != nil {
@@ -166,8 +164,28 @@ func UsbGadgetHidSetup(params *UsbGadgetHidSetupParams) error {
 	if err != nil {
 		return fmt.Errorf("can not remove gadget dir (%v): %w", gadgetDir, err)
 	}
+	return nil
+}
+
+func UsbGadgetHidSetup(params *UsbGadgetHidSetupParams) error {
+	// if configsHome is empty, assume /sys/kernel/config as configsHome
+	if params.ConfigsHome == "" {
+		params.ConfigsHome = "/sys/kernel/config"
+	}
+	// e.g. /sys/kernel/config/usb_gadget/<name>
+	gadgetDir := path.Join(params.ConfigsHome, usbGadgetDir, params.GadgetName)
+	// e.g. /sys/kernel/config/usb_gadget/<name>/strings/0x409
+	stringsDir := path.Join(gadgetDir, "strings", params.StringsLang)
+	// e.g. /sys/kernel/config/usb_gadget/<name>/configs/c.1
+	configsDir := path.Join(gadgetDir, "configs", params.ConfigName + "." + params.ConfigNumber)
+	// e.g. /sys/kernel/config/usb_gadget/<name>/configs/c.1/strings/0x409
+	configsStringsDir := path.Join(configsDir, "strings", params.StringsLang)
+	// e.g. /sys/kernel/config/usb_gadget/<name>/functions/hid.usb0
+	functionsDir := path.Join(gadgetDir, "functions", params.FunctionName + "." + params.InstanceName)
+	// e.g. /sys/kernel/config/usb_gadget/<name>/configs/c.1/hid.usb0
+	configsFunctionDir := path.Join(configsDir, params.FunctionName + "." + params.InstanceName)
 	// setup /sys/kernel/config/usb_gadget/<name>/*
-	err = makeDir(gadgetDir, 0755)
+	err := makeDir(gadgetDir, 0755)
 	if err != nil {
 		return fmt.Errorf("can not create gadget dir (%v): %w", gadgetDir, err)
 	}
@@ -300,7 +318,7 @@ func UsbGadgetHidDisable(params *UsbGadgetHidSetupParams) error {
 	}
 	// e.g. /sys/kernel/config/usb_gadget/<name>
 	gadgetDir := path.Join(params.ConfigsHome, usbGadgetDir, params.GadgetName)
-	err := writeToFile(gadgetDir, "UDC", "", 0644)
+	err := writeToFile(gadgetDir, "UDC", "\n", 0644)
 	if err != nil {
 		return fmt.Errorf("can not write to file (%v): %w", "UDC", err)
 	}
