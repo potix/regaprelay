@@ -33,7 +33,7 @@ func (n *NSProCon) Start() error {
 func (n *NSProCon) Stop() {
 	err := setup.UsbGadgetHidDisable(n.setupParams)
 	if err != nil {
-		log.Printf("can not enable usb gadget hid device in nsprocon: %v", err)
+		log.Printf("can not disable usb gadget hid device in nsprocon: %v", err)
 	}
 }
 
@@ -83,9 +83,9 @@ func (n *NSProCon) RotationStickR(xDir XDirection, lapTime time.Duration, power 
 	return nil
 }
 
-func NewNSProCon(verbose bool) *NSProCon {
+func NewNSProCon(verbose bool, configsHome string, udc string) *NSProCon {
 	setupParams := &setup.UsbGadgetHidSetupParams{
-		ConfigsHome:     "/sys/kernel/config",
+		ConfigsHome:     configsHome,
 		GadgetName:      "nsprocon",
 		IdProduct:       "0x057e",
 		IdVendor:        "0x2009",
@@ -110,6 +110,7 @@ func NewNSProCon(verbose bool) *NSProCon {
 		Subclass:        "0",
 		ReportLength:    "203",
 		ReportDesc:      "050115000904A1018530050105091901290A150025017501950A5500650081020509190B290E150025017501950481027501950281030B01000100A1000B300001000B310001000B320001000B35000100150027FFFF0000751095048102C00B39000100150025073500463B0165147504950181020509190F2912150025017501950481027508953481030600FF852109017508953F8103858109027508953F8103850109037508953F9183851009047508953F9183858009057508953F9183858209067508953F9183C0",
+		UDC:	         udc,
 	}
 	return &NSProCon{
 		BaseBackend: &BaseBackend{},

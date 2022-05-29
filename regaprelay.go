@@ -18,7 +18,9 @@ type regaprelayTcpClientConfig struct {
 }
 
 type regaprelayGamepadConfig struct {
-	Model gamepad.GamepadModel `toml:model`
+	Model       gamepad.GamepadModel `toml:model`
+	ConfigsHome string               `toml:configsHome`
+	Udc         string               `toml:udc`
 }
 
 type regaprelayLogConfig struct {
@@ -74,7 +76,7 @@ func main() {
         verboseLoadedConfig(&conf)
 	// setup gamepad
         gVerboseOpt := gamepad.GamepadVerbose(conf.Verbose)
-        newGamepad, err := gamepad.NewGamepad(conf.Gamepad.Model, gVerboseOpt)
+        newGamepad, err := gamepad.NewGamepad(conf.Gamepad.Model, conf.Gamepad.ConfigsHome, conf.Gamepad.Udc, gVerboseOpt)
 	if err != nil {
 		log.Fatalf("can not create gamepad: %v", err)
 	}

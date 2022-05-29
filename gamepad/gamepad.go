@@ -89,7 +89,7 @@ func (g *Gamepad) Stop() {
 	g.backendIf.Stop()
 }
 
-func NewGamepad(model GamepadModel, opts ...GamepadOption) (*Gamepad, error) {
+func NewGamepad(model GamepadModel, configsHome string, udc string,  opts ...GamepadOption) (*Gamepad, error) {
         baseOpts := defaultGamepadOptions()
         for _, opt := range opts {
                 if opt == nil {
@@ -99,9 +99,9 @@ func NewGamepad(model GamepadModel, opts ...GamepadOption) (*Gamepad, error) {
         }
 	var newBackendIf backend.BackendIf
 	if model == ModelNSProCon {
-		newBackendIf = backend.NewNSProCon(baseOpts.verbose)
+		newBackendIf = backend.NewNSProCon(baseOpts.verbose, configsHome, udc)
 	} else if model == ModelPS4Con {
-		newBackendIf = backend.NewPS4Con(baseOpts.verbose)
+		newBackendIf = backend.NewPS4Con(baseOpts.verbose, configsHome, udc)
 	}
 	if newBackendIf == nil {
 		return nil, fmt.Errorf("unsupported model: %v", model)

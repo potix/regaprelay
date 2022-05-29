@@ -5,6 +5,7 @@ import (
 	"path"
 	"fmt"
 	"encoding/hex"
+	"io/ioutil"
 )
 
 // ==============================
@@ -16,6 +17,10 @@ import (
 // sudo lsusb -d <idProduct>:<idVendor> -v 2> /dev/null
 // - get report descriptor
 // sudo usbhid-dump -d <idProduct>:<idVendor>
+// ====================================
+// get UDC (Usb device controller)
+// ====================================
+// ls /sys/class/udc/
 
 const usbGadgetDir = "usb_gadget"
 const usbDevCon    = "UDC"
@@ -46,6 +51,7 @@ type UsbGadgetHidSetupParams struct {
 	Subclass        string
 	ReportLength    string
 	ReportDesc      string
+	UDC             string
 }
 
 
@@ -105,7 +111,23 @@ func createSymlink(oldName string, newName string) error {
 	return nil
 }
 
+func getUDC() (string, error) {
+	files, err := ioutil.ReadDir("/sys/class/udc")
+	if err != nil {
+		return "", fmt.Errorf("can not read dir (%v): %w", "/sys/class/udc", err)
+	}
+	if len(files) != 1 {
+		return "", fmt.Errorf("can not get udc: %+v", files)
+	}
+	return files[0].Name(), nil
+}
+
+
 func UsbGadgetHidSetup(params *UsbGadgetHidSetupParams) error {
+	// if configsHome is empty, assume /sys/kernel/config as configsHome
+	if params.ConfigsHome == "" {
+		params.ConfigsHome = "/sys/kernel/config"
+	}
 	// e.g. /sys/kernel/config/usb_gadget/<name>
 	gadgetDir := path.Join(params.ConfigsHome, usbGadgetDir, params.GadgetName)
 	// e.g. /sys/kernel/config/usb_gadget/<name>/strings/0x409
@@ -250,9 +272,37 @@ func UsbGadgetHidSetup(params *UsbGadgetHidSetupParams) error {
 }
 
 func UsbGadgetHidEnable(params *UsbGadgetHidSetupParams) error {
+	// if configsHome is empty, assume /sys/kernel/config as configsHome
+	if params.ConfigsHome == "" {
+		params.ConfigsHome = "/sys/kernel/config"
+	}
+	// if UDC is empty, get udc from sys/class/udc
+	if params.UDC == "" {
+		udc, err := getUDC()
+		if err != nil {
+			return fmt.Errorf("can not get udc: %w", err)
+		}
+		params.UDC = udc
+	}
+	// e.g. /sys/kernel/config/usb_gadget/<name>
+	gadgetDir := path.Join(params.ConfigsHome, usbGadgetDir, params.GadgetName)
+	err := writeToFile(gadgetDir, "UDC", params.UDC, 0644)
+	if err != nil {
+		return fmt.Errorf("can not write to file (%v): %w", "UDC", err)
+	}
 	return nil
 }
 
 func UsbGadgetHidDisable(params *UsbGadgetHidSetupParams) error {
+	// if configsHome is empty, assume /sys/kernel/config as configsHome
+	if params.ConfigsHome == "" {
+		params.ConfigsHome = "/sys/kernel/config"
+	}
+	// e.g. /sys/kernel/config/usb_gadget/<name>
+	gadgetDir := path.Join(params.ConfigsHome, usbGadgetDir, params.GadgetName)
+	err := writeToFile(gadgetDir, "UDC", "", 0644)
+	if err != nil {
+		return fmt.Errorf("can not write to file (%v): %w", "UDC", err)
+	}
 	return nil
 }
