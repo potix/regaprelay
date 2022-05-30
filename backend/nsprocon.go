@@ -23,35 +23,37 @@ const (
 
 
 // Report IDs.
-const byte reportIdInput01 = 0x01;
-const byte reportIdInput10 = 0x10;
-const byte reportIdOutput21 = 0x21;
-const byte reportIdOutput30 = 0x30;
-const byte usbReportIdInput80 = 0x80;
+const byte reportIdInput01     = 0x01;
+const byte reportIdInput10     = 0x10;
+const byte reportIdOutput21    = 0x21;
+const byte reportIdOutput30    = 0x30;
+const byte usbReportIdInput80  = 0x80;
 const byte usbReportIdOutput81 = 0x81;
 
 // Sub-types of the 0x81 input report, used for initialization.
-const byte subTypeRequestMac = 0x01;
-const byte subTypeHandshake = 0x02;
-const byte subTypeBaudRate = 0x03;
+const byte subTypeRequestMac        = 0x01;
+const byte subTypeHandshake         = 0x02;
+const byte subTypeBaudRate          = 0x03;
 const byte subTypeDisableUsbTimeout = 0x04;
-const byte subTypeEnableUsbTimeout = 0x05;
+const byte subTypeEnableUsbTimeout  = 0x05;
 
 // Values for the |device_type| field reported in the MAC reply.
 const byte usbDeviceTypeChargingGripNoDevice = 0x00;
-const byte usbDeviceTypeChargingGripJoyConL = 0x01;
-const byte usbDeviceTypeChargingGripJoyConR = 0x02;
-const byte subDeviceTypeProController = 0x03;
+const byte usbDeviceTypeChargingGripJoyConL  = 0x01;
+const byte usbDeviceTypeChargingGripJoyConR  = 0x02;
+const byte subDeviceTypeProController        = 0x03;
 
 // UART subcommands.
-const byte subCommandSetInputReportMode = 0x03;
-const byte subCommandReadSpi = 0x10;
-const byte subCommandSetPlayerLights = 0x30;
-const byte subCommand33 = 0x33;
-const byte subCommandSetHomeLight = 0x38;
-const byte subCommandEnableImu = 0x40;
-const byte subCommandSetImuSensitivity = 0x41;
-const byte subCommandEnableVibration = 0x48;
+const byte subCommandRequestDeviceInfo        = 0x02;
+const byte subCommandSetInputReportMode       = 0x03;
+const byte subCommandSetShipmentLowPowerState = 0x08;
+const byte subCommandReadSpi                  = 0x10;
+const byte subCommandSetPlayerLights          = 0x30;
+const byte subCommand33                       = 0x33;
+const byte subCommandSetHomeLight             = 0x38;
+const byte subCommandEnableImu                = 0x40;
+const byte subCommandSetImuSensitivity        = 0x41;
+const byte subCommandEnableVibration          = 0x48;
 
 type buttons struct {
         a            byte
@@ -217,11 +219,28 @@ func (n *NSProCon) readReportLoop(f * File) {
 		case usbReportIdInput01:
 			counter := buf[1] // XXX ???
 			n.sendVibrationRequest(buf[2:10])
-			switch buf[10]:
-			case subCommandSetInputReportMode:
-				err := writeReport(usbReportIdOutput21, buildOutput21(buildControllerReport(), 0x80 /* ack */, subCommandSetInputReportMode, []byte{}))
+			switch buf[10] {
+			case subCommandRequestDeviceInfo:
+				err := writeReport(usbReportIdOutput21, buildOutput21(buildControllerReport(), 0x82 /* ack */, subCommandSetInputReportMode,
+					[]byte{ 0x03, 0x48, 0x03, 0x02 /* ??? */ }, c.reverseMacAddr, []byte{ 0x03 /* ??? */, 0x02 /* default */ } ))
 				if err != nil {
 					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %w", 0x80, subCommandSetInputReportMode, err)
+					return
+				}
+			case subCommandSetInputReportMode:
+				if buf[11] == x30 {
+					log.Printf("Standard full mode. Pushes current state @60Hz")
+				}
+				err := writeReport(usbReportIdOutput21, buildOutput21(buildControllerReport(), 0x80 /* ack */, subCommandSetInputReportMode))
+				if err != nil {
+					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %w", 0x80, subCommandSetInputReportMode, err)
+					return
+				}
+			case subCommandSetShipmentLowPowerState:
+				// buf[11] nothig to do
+				err := writeReport(usbReportIdOutput21, buildOutput21(buildControllerReport(), 0x80 /* ack */, subCommandSetShipmentLowPowerState))
+				if err != nil {
+					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %w", 0x80, subCommandSetShipmentLowPowerState, err)
 					return
 				}
 			case subCommandReadSpi:
@@ -229,7 +248,7 @@ func (n *NSProCon) readReportLoop(f * File) {
 				// XXXX
 			case subCommandSetPlayerLights:
 				// buf[11] nothig to do
-				err := writeReport(usbReportIdOutput21, buildOutput21(buildControllerReport(), 0x80 /* ack */, subCommandSetPlayerLights, []byte{}))
+				err := writeReport(usbReportIdOutput21, buildOutput21(buildControllerReport(), 0x80 /* ack */, subCommandSetPlayerLights))
 				if err != nil {
 					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %w", 0x80, subCommandSetPlayerLights, err)
 					return
@@ -243,14 +262,14 @@ func (n *NSProCon) readReportLoop(f * File) {
 
 			case subCommandSetHomeLight:
 				// buf[11:36] nothing todo
-				err := writeReport(usbReportIdOutput21, buildOutput21(buildControllerReport(), 0x80 /* ack */, subCommandSetHomeLight, []byte{}))
+				err := writeReport(usbReportIdOutput21, buildOutput21(buildControllerReport(), 0x80 /* ack */, subCommandSetHomeLight))
 				if err != nil {
 					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %w", 0x80, subCommandSetHomeLight, err)
 					return
 				}
 			case subCommandEnableImu:
 				c.imuEnable := buf[11]
-				err := writeReport(usbReportIdOutput21, buildOutput21(buildControllerReport(), 0x80 /* ack */, subCommandEnableImu, []byte{}))
+				err := writeReport(usbReportIdOutput21, buildOutput21(buildControllerReport(), 0x80 /* ack */, subCommandEnableImu))
 				if err != nil {
 					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %w", 0x80, subCommandEnableImu, err)
 					return
@@ -260,7 +279,7 @@ func (n *NSProCon) readReportLoop(f * File) {
                                 c.imuSensitivity.accelerometerSensitivity     = buf[12]
                                 c.imuSensitivity.gyroPerformanceRate          = buf[13]
                                 c.imuSensitivity.accelerometerFilterBandwidth = buf[14]
-				err := writeReport(usbReportIdOutput21, buildOutput21(buildControllerReport(), 0x80 /* ack */, subCommandSetImuSensitivity, []byte{}))
+				err := writeReport(usbReportIdOutput21, buildOutput21(buildControllerReport(), 0x80 /* ack */, subCommandSetImuSensitivity))
 				if err != nil {
 					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %w", 0x80, subCommandSetImuSensitivity, err)
 					return
@@ -272,13 +291,12 @@ func (n *NSProCon) readReportLoop(f * File) {
 				} else {
 					log.Printf("vibration enabled")
 				}
-				err := writeReport(usbReportIdOutput21, buildOutput21(buildControllerReport(), 0x80 /* ack */, subCommandEnableVibration, []byte{}))
+				err := writeReport(usbReportIdOutput21, buildOutput21(buildControllerReport(), 0x80 /* ack */, subCommandEnableVibration))
 				if err != nil {
 					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %w", 0x80, subCommandEnableVibration, err)
 					return
 				}
 			}
-
 		case usbReportIdInput10:
 		}
 	}
@@ -340,7 +358,7 @@ func (n *NSProCon) buildControllerReport() []byte {
 }
 
 func (n *NSProCon) writeControllerReportLoop() {
-	ticker := time.NewTicker(time.Millisecond * 1000 / 60)
+	ticker := time.NewTicker((time.Millisecond * 1000 / 60) + time.Millisecond)
 	defer ticker.Stop()
 	for {
 		select {
