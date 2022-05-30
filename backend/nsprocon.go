@@ -12,10 +12,13 @@ import(
 type comState int
 
 const (
-	comStateInit       comState = iota
+	comStateInit               comState = iota
+	comStateEnableUsbTimeout
 	comStateMac
-	comStateBaudRate
 	comStateHandshake
+	comStateBaudRate
+	comStateHandshake2
+	comStateDisableUsbTimeout
 )
 
 
@@ -86,18 +89,28 @@ type controller struct {
 	rightStick *stick
 }
 
+type imuSensitivity struct {
+	gyroSensitivity              byte
+	accelerometerSensitivity     byte
+	gyroPerformanceRate          byte
+	accelerometerFilterBandwidth byte
+
+}
+
 type NSProCon struct  {
 	*BaseBackend
-	setupParams    *setup.UsbGadgetHidSetupParams
-	verbose        bool
-	macAddr        []byte
-	reverseMacAddr []byte
-	comState       comState
-	usbTimeout     bool
-	reportCounter  byte
-	imuEnable      bool
-	stopCh         int
-	controller     *controller
+	setupParams     *setup.UsbGadgetHidSetupParams
+	verbose         bool
+	macAddr         []byte
+	reverseMacAddr  []byte
+	comState        comState
+	usbTimeout      bool
+	reportCounter   byte
+	imuEnable       byte
+	vibrationEnable byte
+	stopCh          int
+	controller      *controller
+	imuSensitivity  *imuSensitivity
 }
 
 func (n *NSProCon) writeReport(f *File, reportId byte, reportBytes []byte) (error) {
@@ -113,6 +126,7 @@ func (n *NSProCon) writeReport(f *File, reportId byte, reportBytes []byte) (erro
 	if wl != len(buf) {
 		return fmt.Errorf("partial write report (%x) to gadget device file: write len = %v", reportId, wl)
 	}
+	log.Printf("wrote %x", buf)
 	return nil
 }
 
@@ -179,7 +193,11 @@ func (n *NSProCon) readReportLoop(f * File) {
 					log.Printf("can not write reponse report (81) to gadget device file: %w", err)
 					return
 				}
-				n.comState = comStateHandshake
+				if n.comState == comStateBaudRate  {
+					n.comState = comStateHandshake2
+				} else {
+					n.comState = comStateHandshake
+				}
 			case subTypeBaudRate:
 				err := writeReport(usbReportIdOutput81, []byte{ buf[1] })
 				if err != nil {
@@ -189,19 +207,79 @@ func (n *NSProCon) readReportLoop(f * File) {
 				n.comState = comStateBaudRate
 			case subTypeDisableUsbTimeout:
 				n.usbTimeout = false
+				n.comState = comStateDisableUsbTimeout
 			case subTypeEnableUsbTimeout:
 				n.usbTimeout = true
+				n.comState = comStateEnableUsbTimeout
 			default:
 				log.Printf("unsupported sub type (%x): %x", buf[1], buf[2:rl])
 			}
-		case kUsbReportIdInput01:
+		case usbReportIdInput01:
 			counter := buf[1] // XXX ???
 			n.sendVibrationRequest(buf[2:10])
 			switch buf[10]:
 			case subCommandSetInputReportMode:
+				err := writeReport(usbReportIdOutput21, buildOutput21(buildControllerReport(), 0x80 /* ack */, subCommandSetInputReportMode, []byte{}))
+				if err != nil {
+					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %w", 0x80, subCommandSetInputReportMode, err)
+					return
+				}
+			case subCommandReadSpi:
+				// XXXX TODO
+				// XXXX
+			case subCommandSetPlayerLights:
+				// buf[11] nothig to do
+				err := writeReport(usbReportIdOutput21, buildOutput21(buildControllerReport(), 0x80 /* ack */, subCommandSetPlayerLights, []byte{}))
+				if err != nil {
+					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %w", 0x80, subCommandSetPlayerLights, err)
+					return
+				}
+			case subCommand33:
+				err := writeReport(usbReportIdOutput21, buildOutput21(buildControllerReport(), 0x80 /* ack */, subCommand33, []byte{ 0x03 /* XXX ???? */ }))
+				if err != nil {
+					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %w", 0x80, subCommand33, err)
+					return
+				}
+
+			case subCommandSetHomeLight:
+				// buf[11:36] nothing todo
+				err := writeReport(usbReportIdOutput21, buildOutput21(buildControllerReport(), 0x80 /* ack */, subCommandSetHomeLight, []byte{}))
+				if err != nil {
+					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %w", 0x80, subCommandSetHomeLight, err)
+					return
+				}
+			case subCommandEnableImu:
+				c.imuEnable := buf[11]
+				err := writeReport(usbReportIdOutput21, buildOutput21(buildControllerReport(), 0x80 /* ack */, subCommandEnableImu, []byte{}))
+				if err != nil {
+					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %w", 0x80, subCommandEnableImu, err)
+					return
+				}
+			case subCommandSetImuSensitivity:
+                                c.imuSensitivity.gyroSensitivity              = buf[11]
+                                c.imuSensitivity.accelerometerSensitivity     = buf[12]
+                                c.imuSensitivity.gyroPerformanceRate          = buf[13]
+                                c.imuSensitivity.accelerometerFilterBandwidth = buf[14]
+				err := writeReport(usbReportIdOutput21, buildOutput21(buildControllerReport(), 0x80 /* ack */, subCommandSetImuSensitivity, []byte{}))
+				if err != nil {
+					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %w", 0x80, subCommandSetImuSensitivity, err)
+					return
+				}
+			case subCommandEnableVibration:
+				c.vibrationEnable = buf[11]
+				if c.vibrationEnable == 0 {
+					log.Printf("vibration disabled")
+				} else {
+					log.Printf("vibration enabled")
+				}
+				err := writeReport(usbReportIdOutput21, buildOutput21(buildControllerReport(), 0x80 /* ack */, subCommandEnableVibration, []byte{}))
+				if err != nil {
+					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %w", 0x80, subCommandEnableVibration, err)
+					return
+				}
 			}
 
-		case kUsbReportIdInput10:
+		case usbReportIdInput10:
 		}
 	}
 }
@@ -248,8 +326,8 @@ func (n *NSProCon) buildControllerReport() []byte {
 	stickBytes[3] = uint8(rx & 0xff)
 	stickBytes[4] = uint8(((ry << 4) & 0xf0) | ((rx >> 8) & 0x0f))
 	stickBytes[5] = uint8((ry >> 4) & 0xff)
-	vibratorReport := uint8(0x00) /* ???? */
-	if c.imuEnable {
+	vibratorReport := uint8(0x00) /* XXX ???? */
+	if c.imuEnable != 0 {
 		// XXX  not supported imu in gamepad api
 		// XXX  no idea
 	}
@@ -267,7 +345,7 @@ func (n *NSProCon) writeControllerReportLoop() {
 	for {
 		select {
 		case <-ticker.C:
-			if n.comState < comStateHandshake {
+			if n.comState < comStateDisableUsbTimeout {
 				continue
 			}
 			err := c.writeReport(reportIdOutput30, buildControllerReport())
@@ -403,7 +481,10 @@ func NewNSProCon(verbose bool, macAddr string, configsHome string, udc string) (
 		comState: comStateInit,
 		usbtimeout: true,
 		reportCounter: 0,
-		imuEnable: false,
+		imuEnable: 0,
+		bybrationEnable: 0,
 		stopCha: make(chan int),
+		controller: &controller{},
+		imuSensitivity: &imuSensitivity{},
 	}, nil
 }
