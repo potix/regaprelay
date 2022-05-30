@@ -4,6 +4,7 @@ import (
 	"os"
 	"log"
 	"encoding/hex"
+	"flag"
 )
 
 var checkAddr60 = []string{
@@ -28,7 +29,10 @@ var checkAddr80 = []string{
 }
 
 func main() {
-	rw, err := os.OpenFile("/dev/hidraw0", os.O_RDWR, 0644)
+	var devFile string
+        flag.StringVar(&devFile, "dev", "/dev/hidraw0", "device file")
+        flag.Parse()
+	rw, err := os.OpenFile(devFile, os.O_RDWR, 0644)
 	if err != nil {
                 log.Printf("can not open /dev/hidraw: %v", err)
 		return
