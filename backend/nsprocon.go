@@ -6,12 +6,15 @@ import(
 	"time"
 	"github.com/potix/regaprelay/backend/setup"
 	"github.com/potix/regapweb/handler"
+	"encoding/hex"
 )
 
 type NSProCon struct  {
 	*BaseBackend
-	setupParams *setup.UsbGadgetHidSetupParams
-	verbose     bool
+	setupParams    *setup.UsbGadgetHidSetupParams
+	verbose        bool
+	macAddr        []byte
+	reverseMacAddr []byte
 }
 
 func (n *NSProCon) Setup() error {
@@ -93,7 +96,7 @@ func (n *NSProCon) RotationStickR(xDir XDirection, lapTime time.Duration, power 
 	return nil
 }
 
-func NewNSProCon(verbose bool, configsHome string, udc string) *NSProCon {
+func NewNSProCon(verbose bool, macAddr string, configsHome string, udc string) (*NSProCon, error) {
 	setupParams := &setup.UsbGadgetHidSetupParams{
 		ConfigsHome:     configsHome,
 		GadgetName:      "nsprocon",
@@ -122,9 +125,19 @@ func NewNSProCon(verbose bool, configsHome string, udc string) *NSProCon {
 		ReportDesc:      "050115000904A1018530050105091901290A150025017501950A5500650081020509190B290E150025017501950481027501950281030B01000100A1000B300001000B310001000B320001000B35000100150027FFFF0000751095048102C00B39000100150025073500463B0165147504950181020509190F2912150025017501950481027508953481030600FF852109017508953F8103858109027508953F8103850109037508953F9183851009047508953F9183858009057508953F9183858209067508953F9183C0",
 		UDC:	         udc,
 	}
+        decodedMacAddr, err := hex.DecodeString(macAddr)
+        if err != nil {
+                return nil, fmt.Errorf("can not decode mac address string (%v): %w", macAddr, err)
+        }
+	reverseMacAddr := make([]byte, len(decodedMacAddr))
+	for i, b := range decodedMacAddr {
+		reverseMacAddr[len(decodedMacAddr) - 1 - i] = b
+	}
 	return &NSProCon{
 		BaseBackend: &BaseBackend{},
 		verbose: verbose,
 		setupParams: setupParams,
-	}
+		macAddr: decodedMacAddr,
+		reverseMacAddr: reverseMacAddr,
+	}, nil
 }

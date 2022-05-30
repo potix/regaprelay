@@ -89,7 +89,7 @@ func (g *Gamepad) Stop() {
 	g.backendIf.Stop()
 }
 
-func NewGamepad(model GamepadModel, configsHome string, udc string,  opts ...GamepadOption) (*Gamepad, error) {
+func NewGamepad(model GamepadModel, macAddr string, configsHome string, udc string,  opts ...GamepadOption) (*Gamepad, error) {
         baseOpts := defaultGamepadOptions()
         for _, opt := range opts {
                 if opt == nil {
@@ -97,16 +97,20 @@ func NewGamepad(model GamepadModel, configsHome string, udc string,  opts ...Gam
                 }
                 opt(baseOpts)
         }
+	var err error
 	var newBackendIf backend.BackendIf
 	if model == ModelNSProCon {
-		newBackendIf = backend.NewNSProCon(baseOpts.verbose, configsHome, udc)
+		newBackendIf, err = backend.NewNSProCon(baseOpts.verbose, macAddr, configsHome, udc)
+		if err != nil {
+			return nil, fmt.Errorf("can not create procon: %v", err)
+		}
 	} else if model == ModelPS4Con {
 		newBackendIf = backend.NewPS4Con(baseOpts.verbose, configsHome, udc)
 	}
 	if newBackendIf == nil {
 		return nil, fmt.Errorf("unsupported model: %v", model)
 	}
-	err := newBackendIf.Setup()
+	err = newBackendIf.Setup()
 	if err != nil {
 		return nil, fmt.Errorf("backend setup error: %w", err)
 	}
