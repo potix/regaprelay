@@ -23,37 +23,67 @@ const (
 
 
 // Report IDs.
-const byte reportIdInput01     = 0x01;
-const byte reportIdInput10     = 0x10;
-const byte reportIdOutput21    = 0x21;
-const byte reportIdOutput30    = 0x30;
-const byte usbReportIdInput80  = 0x80;
-const byte usbReportIdOutput81 = 0x81;
+const byte reportIdInput01     = 0x01
+const byte reportIdInput10     = 0x10
+const byte reportIdOutput21    = 0x21
+const byte reportIdOutput30    = 0x30
+const byte usbReportIdInput80  = 0x80
+const byte usbReportIdOutput81 = 0x81
 
 // Sub-types of the 0x81 input report, used for initialization.
-const byte subTypeRequestMac        = 0x01;
-const byte subTypeHandshake         = 0x02;
-const byte subTypeBaudRate          = 0x03;
-const byte subTypeDisableUsbTimeout = 0x04;
-const byte subTypeEnableUsbTimeout  = 0x05;
+const byte subTypeRequestMac        = 0x01
+const byte subTypeHandshake         = 0x02
+const byte subTypeBaudRate          = 0x03
+const byte subTypeDisableUsbTimeout = 0x04
+const byte subTypeEnableUsbTimeout  = 0x05
 
 // Values for the |device_type| field reported in the MAC reply.
-const byte usbDeviceTypeChargingGripNoDevice = 0x00;
-const byte usbDeviceTypeChargingGripJoyConL  = 0x01;
-const byte usbDeviceTypeChargingGripJoyConR  = 0x02;
-const byte subDeviceTypeProController        = 0x03;
+const byte usbDeviceTypeChargingGripNoDevice = 0x00
+const byte usbDeviceTypeChargingGripJoyConL  = 0x01
+const byte usbDeviceTypeChargingGripJoyConR  = 0x02
+const byte subDeviceTypeProController        = 0x03
 
 // UART subcommands.
-const byte subCommandRequestDeviceInfo        = 0x02;
-const byte subCommandSetInputReportMode       = 0x03;
-const byte subCommandSetShipmentLowPowerState = 0x08;
-const byte subCommandReadSpi                  = 0x10;
-const byte subCommandSetPlayerLights          = 0x30;
-const byte subCommand33                       = 0x33;
-const byte subCommandSetHomeLight             = 0x38;
-const byte subCommandEnableImu                = 0x40;
-const byte subCommandSetImuSensitivity        = 0x41;
-const byte subCommandEnableVibration          = 0x48;
+const byte subCommandBluetoothManualPairing   = 0x01
+const byte subCommandRequestDeviceInfo        = 0x02
+const byte subCommandSetInputReportMode       = 0x03
+const byte subCommandSetShipmentLowPowerState = 0x08
+const byte subCommandReadSpi                  = 0x10
+const byte subCommandSetNfcIrMcuConfiguration = 0x21
+const byte subCommandSetPlayerLights          = 0x30
+const byte subCommand33                       = 0x33
+const byte subCommandSetHomeLight             = 0x38
+const byte subCommandEnableImu                = 0x40
+const byte subCommandSetImuSensitivity        = 0x41
+const byte subCommandEnableVibration          = 0x48
+
+
+
+
+
+var spiRomData = map[byte][]byte{
+	0x60: []byte{
+		/* 0x6000 */ 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+		/* 0x6010 */             0x03, 0xa0,                                           0x02            
+		/* 0x6020 */ 0x05, 0x00, 0x53, 0x00, 0x94, 0x01, 0x00, 0x40, 0x00, 0x40, 0x00, 0x40, 0xf4, 0xff, 0x09, 0x00,
+		/* 0x6030 */ 0x01, 0x00, 0xe7, 0x3b, 0xe7, 0x3b, 0xe7, 0x3b,                               0x05, 0x96, 0x63,
+		/* 0x6040 */ 0xbc, 0xc7, 0x7a, 0x57, 0x46, 0x5e, 0x90, 0x87, 0x7b, 0x39, 0x86, 0x5e, 0xef, 0x15, 0x63, 0xff,
+		/* 0x6050 */ 0x32, 0x32, 0x32, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00,
+		/* 0x6060 */
+		/* 0x6070 */
+		/* 0x6080 */ 0x50, 0xfd, 0x00, 0x00, 0xc6, 0x0f, 0x0f, 0x30, 0x61, 0xae, 0x90, 0xd9, 0xd4, 0x14, 0x54, 0x41,
+		/* 0x6090 */ 0x15, 0x54, 0xc7, 0x79, 0x9c, 0x33, 0x36, 0x63, 0x0f, 0x30, 0x61, 0xae, 0x90, 0xd9, 0xd4, 0x14,
+		/* 0x60a0 */ 0x54, 0x41, 0x15, 0x54, 0xc7, 0x79, 0x9c, 0x33, 0x36, 0x63,
+
+	},
+	0x80: []byte{
+		/* 0x8000 */
+		/* 0x8010 */ 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+		/* 0x8020 */ 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff
+		/* 0x8030 */ 
+	},
+}
+
 
 type buttons struct {
         a            byte
@@ -220,6 +250,9 @@ func (n *NSProCon) readReportLoop(f * File) {
 			counter := buf[1] // XXX ???
 			n.sendVibrationRequest(buf[2:10])
 			switch buf[10] {
+			case subCommandBluetoothManualPairing:
+				// XXX ignore
+				log.Printf("ignore bluetooth manual pairing")
 			case subCommandRequestDeviceInfo:
 				err := writeReport(usbReportIdOutput21, buildOutput21(buildControllerReport(), 0x82 /* ack */, subCommandSetInputReportMode,
 					[]byte{ 0x03, 0x48, 0x03, 0x02 /* ??? */ }, c.reverseMacAddr, []byte{ 0x03 /* ??? */, 0x02 /* default */ } ))
@@ -246,6 +279,15 @@ func (n *NSProCon) readReportLoop(f * File) {
 			case subCommandReadSpi:
 				// XXXX TODO
 				// XXXX
+                        case subCommandSetNfcIrMcuConfiguration:
+				// XXX buf[11] ????
+				err := writeReport(usbReportIdOutput21, buildOutput21(buildControllerReport(), 0xa0 /* ack */, subCommandSetNfcIrMcuConfiguration,
+				       []byte{ 0x01, 0x00, 0xff, 0x00, 0x03, 0x00, 0x05, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+					       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x5c, /* XXX ??? */} ))
+				if err != nil {
+					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %w", 0xa0, subCommandSetNfcIrMcuConfiguration, err)
+					return
+				}
 			case subCommandSetPlayerLights:
 				// buf[11] nothig to do
 				err := writeReport(usbReportIdOutput21, buildOutput21(buildControllerReport(), 0x80 /* ack */, subCommandSetPlayerLights))
@@ -296,6 +338,8 @@ func (n *NSProCon) readReportLoop(f * File) {
 					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %w", 0x80, subCommandEnableVibration, err)
 					return
 				}
+			default:
+				log.Printf("unsupported sub command (%x): %x", buf[10], buf[11:rl])
 			}
 		case usbReportIdInput10:
 		}
