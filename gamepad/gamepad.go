@@ -89,7 +89,7 @@ func (g *Gamepad) Stop() {
 	g.backendIf.Stop()
 }
 
-func NewGamepad(model GamepadModel, macAddr string, configsHome string, udc string,  opts ...GamepadOption) (*Gamepad, error) {
+func NewGamepad(model GamepadModel, macAddr string, spiMemory60 string, spiMemory80 string, configsHome string, udc string,  opts ...GamepadOption) (*Gamepad, error) {
         baseOpts := defaultGamepadOptions()
         for _, opt := range opts {
                 if opt == nil {
@@ -100,7 +100,7 @@ func NewGamepad(model GamepadModel, macAddr string, configsHome string, udc stri
 	var err error
 	var newBackendIf backend.BackendIf
 	if model == ModelNSProCon {
-		newBackendIf, err = backend.NewNSProCon(baseOpts.verbose, macAddr, configsHome, udc)
+		newBackendIf, err = backend.NewNSProCon(baseOpts.verbose, macAddr, spiMemory60, spiMemory80, configsHome, udc)
 		if err != nil {
 			return nil, fmt.Errorf("can not create procon: %v", err)
 		}

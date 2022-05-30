@@ -497,7 +497,7 @@ func (n *NSProCon) RotationStickR(xDir XDirection, lapTime time.Duration, power 
 	return nil
 }
 
-func NewNSProCon(verbose bool, macAddr string, configsHome string, udc string) (*NSProCon, error) {
+func NewNSProCon(verbose bool, macAddr string, spiMemory60 string, spiMemory80 string, configsHome string, udc string) (*NSProCon, error) {
 	setupParams := &setup.UsbGadgetHidSetupParams{
 		ConfigsHome:     configsHome,
 		GadgetName:      "nsprocon",
@@ -530,6 +530,14 @@ func NewNSProCon(verbose bool, macAddr string, configsHome string, udc string) (
         if err != nil {
                 return nil, fmt.Errorf("can not decode mac address string (%v): %w", macAddr, err)
         }
+        decodedSpiMemory60, err := hex.DecodeString(spiMemory60)
+        if err != nil {
+                return nil, fmt.Errorf("can not decode spi memory 60XX string (%v): %w", decodedSpiMemory60, err)
+        }
+        decodedSpiMemory80, err := hex.DecodeString(spiMemory80)
+        if err != nil {
+                return nil, fmt.Errorf("can not decode spi memory 80XX string (%v): %w", decodedSpiMemory80, err)
+        }
 	reverseMacAddr := make([]byte, len(decodedMacAddr))
 	for i, b := range decodedMacAddr {
 		reverseMacAddr[len(decodedMacAddr) - 1 - i] = b
@@ -540,6 +548,8 @@ func NewNSProCon(verbose bool, macAddr string, configsHome string, udc string) (
 		setupParams: setupParams,
 		macAddr: decodedMacAddr,
 		reverseMacAddr: reverseMacAddr,
+		spiMemory60: decoededSpiMemory60,
+		spiMemory80: decoededSpiMemory80,
 		comState: comStateInit,
 		usbtimeout: true,
 		reportCounter: 0,

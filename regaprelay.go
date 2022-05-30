@@ -20,6 +20,8 @@ type regaprelayTcpClientConfig struct {
 type regaprelayGamepadConfig struct {
 	Model       gamepad.GamepadModel `toml:model`
 	MacAddr     string               `toml:macAddr`
+	SpiMemory60 string               `toml:spiMemory60`
+	SpiMemory80 string               `toml:spiMemory80`
 	ConfigsHome string               `toml:configsHome`
 	Udc         string               `toml:udc`
 }
@@ -77,7 +79,7 @@ func main() {
         verboseLoadedConfig(&conf)
 	// setup gamepad
         gVerboseOpt := gamepad.GamepadVerbose(conf.Verbose)
-        newGamepad, err := gamepad.NewGamepad(conf.Gamepad.Model, conf.Gamepad.MacAddr, conf.Gamepad.ConfigsHome, conf.Gamepad.Udc, gVerboseOpt)
+        newGamepad, err := gamepad.NewGamepad(conf.Gamepad.Model, conf.Gamepad.MacAddr, conf.Gamepad.SpiMemory60, conf.Gamepad.SpiMemory80, conf.Gamepad.ConfigsHome, conf.Gamepad.Udc, gVerboseOpt)
 	if err != nil {
 		log.Fatalf("can not create gamepad: %v", err)
 	}
