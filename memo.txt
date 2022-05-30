@@ -1,0 +1,182 @@
+// https://github.com/dekuNukem/Nintendo_Switch_Reverse_Engineering/blob/master/rumble_data_table.md
+struct VibrationFrequency {
+  uint16_t hf;
+  uint8_t lf;
+  int freq_hz;  // rounded
+} kVibrationFrequency[] = {
+    // The linear resonant actuators (LRAs) on Switch devices are capable of
+    // producing vibration effects at a wide range of frequencies, but the
+    // Gamepad API assumes "dual-rumble" style vibration which is typically
+    // implemented by a pair of eccentric rotating mass (ERM) actuators. To
+    // simulate "dual-rumble" with Switch LRAs, the strong and weak vibration
+    // magnitudes are translated into low and high frequency vibration effects.
+    // Only the frequencies used for this translation are included; unused
+    // frequencies have been removed.
+    //
+    // This list must be kept sorted.
+    {0x0068, 0x3a, 141},
+    {0x0098, 0x46, 182}};
+const size_t kVibrationFrequencySize = std::size(kVibrationFrequency);
+
+// https://github.com/dekuNukem/Nintendo_Switch_Reverse_Engineering/blob/master/rumble_data_table.md
+struct VibrationAmplitude {
+  uint8_t hfa;
+  uint16_t lfa;
+  int amp;  // rounded, max 1000 (kVibrationAmplitudeMax)
+} kVibrationAmplitude[]{
+    // Only include safe amplitudes.
+    {0x00, 0x0040, 0},   {0x02, 0x8040, 10},   {0x04, 0x0041, 12},
+    {0x06, 0x8041, 14},  {0x08, 0x0042, 17},   {0x0a, 0x8042, 20},
+    {0x0c, 0x0043, 24},  {0x0e, 0x8043, 28},   {0x10, 0x0044, 33},
+    {0x12, 0x8044, 40},  {0x14, 0x0045, 47},   {0x16, 0x8045, 56},
+    {0x18, 0x0046, 67},  {0x1a, 0x8046, 80},   {0x1c, 0x0047, 95},
+    {0x1e, 0x8047, 112}, {0x20, 0x0048, 117},  {0x22, 0x8048, 123},
+    {0x24, 0x0049, 128}, {0x26, 0x8049, 134},  {0x28, 0x004a, 140},
+    {0x2a, 0x804a, 146}, {0x2c, 0x004b, 152},  {0x2e, 0x804b, 159},
+    {0x30, 0x004c, 166}, {0x32, 0x804c, 173},  {0x34, 0x004d, 181},
+    {0x36, 0x804d, 189}, {0x38, 0x004e, 198},  {0x3a, 0x804e, 206},
+    {0x3c, 0x004f, 215}, {0x3e, 0x804f, 225},  {0x40, 0x0050, 230},
+    {0x42, 0x8050, 235}, {0x44, 0x0051, 240},  {0x46, 0x8051, 245},
+    {0x48, 0x0052, 251}, {0x4a, 0x8052, 256},  {0x4c, 0x0053, 262},
+    {0x4e, 0x8053, 268}, {0x50, 0x0054, 273},  {0x52, 0x8054, 279},
+    {0x54, 0x0055, 286}, {0x56, 0x8055, 292},  {0x58, 0x0056, 298},
+    {0x5a, 0x8056, 305}, {0x5c, 0x0057, 311},  {0x5e, 0x8057, 318},
+    {0x60, 0x0058, 325}, {0x62, 0x8058, 332},  {0x64, 0x0059, 340},
+    {0x66, 0x8059, 347}, {0x68, 0x005a, 355},  {0x6a, 0x805a, 362},
+    {0x6c, 0x005b, 370}, {0x6e, 0x805b, 378},  {0x70, 0x005c, 387},
+    {0x72, 0x805c, 395}, {0x74, 0x005d, 404},  {0x76, 0x805d, 413},
+    {0x78, 0x005e, 422}, {0x7a, 0x805e, 431},  {0x7c, 0x005f, 440},
+    {0x7e, 0x805f, 450}, {0x80, 0x0060, 460},  {0x82, 0x8060, 470},
+    {0x84, 0x0061, 480}, {0x86, 0x8061, 491},  {0x88, 0x0062, 501},
+    {0x8a, 0x8062, 512}, {0x8c, 0x0063, 524},  {0x8e, 0x8063, 535},
+    {0x90, 0x0064, 547}, {0x92, 0x8064, 559},  {0x94, 0x0065, 571},
+    {0x96, 0x8065, 584}, {0x98, 0x0066, 596},  {0x9a, 0x8066, 609},
+    {0x9c, 0x0067, 623}, {0x9e, 0x8067, 636},  {0xa0, 0x0068, 650},
+    {0xa2, 0x8068, 665}, {0xa4, 0x0069, 679},  {0xa6, 0x8069, 694},
+    {0xa8, 0x006a, 709}, {0xaa, 0x806a, 725},  {0xac, 0x006b, 741},
+    {0xae, 0x806b, 757}, {0xb0, 0x006c, 773},  {0xb2, 0x806c, 790},
+    {0xb4, 0x006d, 808}, {0xb6, 0x806d, 825},  {0xb8, 0x006e, 843},
+    {0xba, 0x806e, 862}, {0xbc, 0x006f, 881},  {0xbe, 0x806f, 900},
+    {0xc0, 0x0070, 920}, {0xc2, 0x8070, 940},  {0xc4, 0x0071, 960},
+    {0xc6, 0x8071, 981}, {0xc8, 0x0072, 1000},
+};
+const size_t kVibrationAmplitudeSize = std::size(kVibrationAmplitude);
+
+
+
+// Convert the vibration parameters |frequency| and |amplitude| into a set of
+// parameters that can be sent to the vibration actuator.
+void FrequencyToHex(float frequency,
+                    float amplitude,
+                    uint16_t* hf,
+                    uint8_t* lf,
+                    uint8_t* hf_amp,
+                    uint16_t* lf_amp) {
+  int freq = static_cast<int>(frequency);
+  int amp = static_cast<int>(amplitude * kVibrationAmplitudeMax);
+  // Clamp the target frequency and amplitude to a safe range.
+  freq = base::clamp(freq, kVibrationFrequencyHzMin, kVibrationFrequencyHzMax);
+  amp = base::clamp(amp, 0, kVibrationAmplitudeMax);
+  const auto* best_vf = &kVibrationFrequency[0];
+  for (size_t i = 1; i < kVibrationFrequencySize; ++i) {
+    const auto* vf = &kVibrationFrequency[i];
+    if (vf->freq_hz < freq) {
+      best_vf = vf;
+    } else {
+      // The candidate frequency is higher than the target frequency. Check if
+      // it is closer than the current best.
+      int vf_error_above = vf->freq_hz - freq;
+      int best_vf_error_below = freq - best_vf->freq_hz;
+      if (vf_error_above < best_vf_error_below)
+        best_vf = vf;
+      break;
+    }
+  }
+  const auto* best_va = &kVibrationAmplitude[0];
+  for (size_t i = 0; i < kVibrationAmplitudeSize; ++i) {
+    const auto* va = &kVibrationAmplitude[i];
+    if (va->amp < amp) {
+      best_va = va;
+    } else {
+      // The candidate amplitude is higher than the target amplitude. Check if
+      // it is closer than the current best.
+      int va_error_above = va->amp - amp;
+      int best_va_error_below = amp - best_va->amp;
+      if (va_error_above < best_va_error_below)
+        best_va = va;
+      break;
+    }
+  }
+  DCHECK(best_vf);
+  DCHECK(best_va);
+  *hf = best_vf->hf;
+  *lf = best_vf->lf;
+  *hf_amp = best_va->hfa;
+  *lf_amp = best_va->lfa;
+}
+
+
+void NintendoController::RequestVibration(double left_frequency,
+                                          double left_magnitude,
+                                          double right_frequency,
+                                          double right_magnitude) {
+  uint16_t lhf;  /*
+  uint8_t llf;
+  uint8_t lhfa;
+  uint16_t llfa; /*
+  uint16_t rhf;  /*
+  uint8_t rlf;
+  uint8_t rhfa;
+  uint16_t rlfa; /*
+  FrequencyToHex(left_frequency, left_magnitude, &lhf, &llf, &lhfa, &llfa);
+  FrequencyToHex(right_frequency, right_magnitude, &rhf, &rlf, &rhfa, &rlfa);
+  std::vector<uint8_t> report_bytes(output_report_size_bytes_ - 1);
+  uint8_t counter = static_cast<uint8_t>(output_report_counter_++ & 0x0f);
+  report_bytes[0] = counter;
+  report_bytes[1] = lhf & 0xff;                   // 00   lhf = 0100 ??? 8000
+  report_bytes[2] = lhfa + ((lhf >> 8) & 0xff);   // 01   lhfa = 0
+  report_bytes[3] = llf + ((llfa >> 8) & 0xff);   // 40   llf = 40
+  report_bytes[4] = llfa & 0xff;                  // 40   llfa = 0040
+  report_bytes[5] = rhf & 0xff;                   // 00
+  report_bytes[6] = rhfa + ((rhf >> 8) & 0xff);   // 01
+  report_bytes[7] = rlf + ((rlfa >> 8) & 0xff);   // 40
+  report_bytes[8] = rlfa & 0xff;                  // 40
+  WriteOutputReport(kReportIdOutput10, report_bytes, false);
+}
+
+
+
+逆変換
+
+	var hf_ uint16 = uint16(bytes[1]&0x01)<<8 | uint16(bytes[0])
+	var hf_amp_ uint8 = uint8(bytes[1] & 0xfe)
+
+	var lf_ uint8 = uint8(bytes[2] & 0x7f)
+	var lf_amp_ uint16 = uint16(bytes[2]&0x80)<<8 | uint16(bytes[3])
+
+	fmt.Printf("%x\n", hf_)
+	fmt.Printf("%x\n", hf_amp_)
+
+	fmt.Printf("%x\n", lf_)
+	fmt.Printf("%x\n", lf_amp_)
+
+ここからマッピングテーブル引く
+
+https://github.com/dekuNukem/Nintendo_Switch_Reverse_Engineering/blob/master/rumble_data_table.md
+Frequency (Hz)	と　Amplitudeが求まる
+
+frequencyはむしして　low と　highのと　Amplitudeをノーマライズして
+
+dictionary GamepadEffectParameters {
+    double duration;
+    double startDelay;
+    double strongMagnitude;
+    double weakMagnitude;
+}
+に当てはめる
+
+gamepad.hapticActuators[0].pulse(value, duration);
+
+に当てはめtると木は
+ノーマライズした値の平均とか？
+

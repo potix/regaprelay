@@ -40,6 +40,52 @@ const byte usbDeviceTypeChargingGripJoyConL = 0x01;
 const byte usbDeviceTypeChargingGripJoyConR = 0x02;
 const byte subDeviceTypeProController = 0x03;
 
+// UART subcommands.
+const byte subCommandSetInputReportMode = 0x03;
+const byte subCommandReadSpi = 0x10;
+const byte subCommandSetPlayerLights = 0x30;
+const byte subCommand33 = 0x33;
+const byte subCommandSetHomeLight = 0x38;
+const byte subCommandEnableImu = 0x40;
+const byte subCommandSetImuSensitivity = 0x41;
+const byte subCommandEnableVibration = 0x48;
+
+type buttons struct {
+        a            byte
+        b            byte
+        x            byte
+	y            byte
+        l            byte
+        r            byte
+        zl           byte
+        zr           byte
+        minus        byte
+        plus         byte
+        home         byte
+        capture      byte
+        left         byte
+        right        byte
+        up           byte
+        down         byte
+        leftSl       byte
+        leftSr       byte
+        rightSl      byte
+        rightSr      byte
+        chargingGrip byte
+}
+
+type stick struct {
+	x     float64
+	y     float64
+	press byte
+}
+
+type controller struct {
+	buttons    *buttons
+	leftStick  *stick
+	rightStick *stick
+}
+
 type NSProCon struct  {
 	*BaseBackend
 	setupParams    *setup.UsbGadgetHidSetupParams
@@ -51,6 +97,7 @@ type NSProCon struct  {
 	reportCounter  byte
 	imuEnable      bool
 	stopCh         int
+	controller     *controller
 }
 
 func (n *NSProCon) writeReport(f *File, reportId byte, reportBytes []byte) (error) {
@@ -67,6 +114,38 @@ func (n *NSProCon) writeReport(f *File, reportId byte, reportBytes []byte) (erro
 		return fmt.Errorf("partial write report (%x) to gadget device file: write len = %v", reportId, wl)
 	}
 	return nil
+}
+
+func (n **NSProCon) sendVibrationRequest(vibrationBytes []byte) error {
+	if len(vibrationBytes) < 8 {
+		return fmt.Errorf("invalid vibration data")
+	}
+	var sum byte
+	for _, b := range vibrationBytes {
+		sum += b
+	}
+	if sum == 0 {
+		// no data
+		return
+	}
+	var lhf uint16 = uint16(bytes[1]&0x01)<<8 | uint16(bytes[0])
+	var lhfAmp uint8 = uint8(bytes[1] & 0xfe)
+	var llf uint8 = uint8(bytes[2] & 0x7f)
+	var llfAmp uint16 = uint16(bytes[2]&0x80)<<8 | uint16(bytes[3])
+	var rhf uint16 = uint16(bytes[5]&0x01)<<8 | uint16(bytes[4])
+	var rhfAmp uint8 = uint8(bytes[5] & 0xfe)
+	var rlf uint8 = uint8(bytes[6] & 0x7f)
+	var rlfAmp uint16 = uint16(bytes[6]&0x80)<<8 | uint16(bytes[7])
+	// XXXXX  テーブルから振動強度取る
+	// XXXXX  ノーマライズする
+	// XXXXX  平均化していい感じにする
+	// XXXXX  構造体に合わせる
+	vibrationMessage := &handler.GamepadVibrationMessage {
+		// XXXX
+	}
+	if n.onVibrationCh != nil {
+		n.onVibrationCh <- vibrationMessage
+	}
 }
 
 func (n *NSProCon) readReportLoop(f * File) {
@@ -88,21 +167,21 @@ func (n *NSProCon) readReportLoop(f * File) {
 			case subTypeRequestMac:
 				reportBytes := []byte{ buf[1], 0x00 /* padding */, subDeviceTypeProController }
 				reportBytes = append(reportBytes, n.macAddr...)
-				err := writeReport(kUsbReportIdOutput81, reportBytes)
+				err := writeReport(usbReportIdOutput81, reportBytes)
 				if err != nil {
 					log.Printf("can not write reponse report (81) to gadget device file: %w", err)
 					return
 				}
 				n.comState = comStateMac
 			case subTypeHandshake:
-				err := writeReport(kUsbReportIdOutput81, []byte{ buf[1] })
+				err := writeReport(usbReportIdOutput81, []byte{ buf[1] })
 				if err != nil {
 					log.Printf("can not write reponse report (81) to gadget device file: %w", err)
 					return
 				}
 				n.comState = comStateHandshake
 			case subTypeBaudRate:
-				err := writeReport(kUsbReportIdOutput81, []byte{ buf[1] })
+				err := writeReport(usbReportIdOutput81, []byte{ buf[1] })
 				if err != nil {
 					log.Printf("can not write reponse report (81) to gadget device file: %w", err)
 					return
@@ -116,44 +195,50 @@ func (n *NSProCon) readReportLoop(f * File) {
 				log.Printf("unsupported sub type (%x): %x", buf[1], buf[2:rl])
 			}
 		case kUsbReportIdInput01:
+			counter := buf[1] // XXX ???
+			n.sendVibrationRequest(buf[2:10])
+			switch buf[10]:
+			case subCommandSetInputReportMode:
+			}
+
 		case kUsbReportIdInput10:
 		}
 	}
 }
 
-func (n *NSProCon) buildControllerStateReport() []byte {
+func (n *NSProCon) buildControllerReport() []byte {
         now := time.Now()
         timestamp := ((now.UnixNano() / int64(time.Millisecond)) % 256)
 	byte1 := 8 /* buttery full */               << 4 |
 	         1 /* connection info ??? */
-	byte2 := c.controllerState.buttons.y            |
-		 c.controllerState.buttons.x       << 1 |
-		 c.controllerState.buttons.b       << 2 |
-		 c.controllerState.buttons.a       << 3 |
-		 c.controllerState.buttons.rightSr << 4 |
-		 c.controllerState.buttons.rightSl << 5 |
-		 c.controllerState.buttons.r       << 6 |
-		 c.controllerState.buttons.zr      << 7
-	byte3 := c.controllerState.buttons.minus             |
-	         c.controllerState.buttons.plus         << 1 |
-	         c.controllerState.rightStick.press     << 2 |
-	         c.controllerState.leftStick.press      << 3 |
-	         c.controllerState.buttons.home         << 4 |
-	         c.controllerState.buttons.capture      << 5 |
+	byte2 := c.controller.buttons.y            |
+		 c.controller.buttons.x       << 1 |
+		 c.controller.buttons.b       << 2 |
+		 c.controller.buttons.a       << 3 |
+		 c.controller.buttons.rightSr << 4 |
+		 c.controller.buttons.rightSl << 5 |
+		 c.controller.buttons.r       << 6 |
+		 c.controller.buttons.zr      << 7
+	byte3 := c.controller.buttons.minus             |
+	         c.controller.buttons.plus         << 1 |
+	         c.controller.rightStick.press     << 2 |
+	         c.controller.leftStick.press      << 3 |
+	         c.controller.buttons.home         << 4 |
+	         c.controller.buttons.capture      << 5 |
 	         0 /* unused */                         << 6 |
-	         c.controllerState.buttons.chargingGrip << 7 |
-	byte4 := c.controllerState.buttons.down        |
-		 c.controllerState.buttons.up     << 1 |
-		 c.controllerState.buttons.right  << 2 |
-		 c.controllerState.buttons.left   << 3 |
-		 c.controllerState.buttons.leftSr << 4 |
-		 c.controllerState.buttons.leftSl << 5 |
-		 c.controllerState.buttons.l      << 6 |
-		 c.controllerState.buttons.zl     << 7 |
-	lx := uint16(math.Round((1 + c.controllerState.leftStick.x) * 2047.5))
-	ly := uint16(math.Round((1 + c.controllerState.leftStick.y) * 2047.5))
-	rx := uint16(math.Round((1 + c.controllerState.rightStick.x) * 2047.5))
-	ry := uint16(math.Round((1 + c.controllerState.rightStick.y) * 2047.5))
+	         c.controller.buttons.chargingGrip << 7 |
+	byte4 := c.controller.buttons.down        |
+		 c.controller.buttons.up     << 1 |
+		 c.controller.buttons.right  << 2 |
+		 c.controller.buttons.left   << 3 |
+		 c.controller.buttons.leftSr << 4 |
+		 c.controller.buttons.leftSl << 5 |
+		 c.controller.buttons.l      << 6 |
+		 c.controller.buttons.zl     << 7 |
+	lx := uint16(math.Round((1 + c.controller.leftStick.x) * 2047.5))
+	ly := uint16(math.Round((1 + c.controller.leftStick.y) * 2047.5))
+	rx := uint16(math.Round((1 + c.controller.rightStick.x) * 2047.5))
+	ry := uint16(math.Round((1 + c.controller.rightStick.y) * 2047.5))
 	// 0 - 4095 (12 bit)
 	// 16 bit 8byte -> 12bit 6byte
 	stickBytes = make([]byte, 6)
@@ -168,13 +253,15 @@ func (n *NSProCon) buildControllerStateReport() []byte {
 		// XXX  not supported imu in gamepad api
 		// XXX  no idea
 	}
-	return []byte{timestamp, byte1, byte2, byte3, byte4,
-		stickBytes[0], stickBytes[1], stickBytes[2],
+	return []byte{
+		timestamp, byte1, byte2, byte3, byte4,
+	        stickBytes[0], stickBytes[1], stickBytes[2],
 	        stickBytes[3], stickBytes[4], stickBytes[5],
-		vibratorReport }
+		vibratorReport,
+	 }
 }
 
-func (n *NSProCon) writeControllerStateReportLoop() {
+func (n *NSProCon) writeControllerReportLoop() {
 	ticker := time.NewTicker(time.Millisecond * 1000 / 60)
 	defer ticker.Stop()
 	for {
@@ -183,13 +270,12 @@ func (n *NSProCon) writeControllerStateReportLoop() {
 			if n.comState < comStateHandshake {
 				continue
 			}
-			err := c.writeReport(reportIdOutput30, buildControllerStateReport() )
+			err := c.writeReport(reportIdOutput30, buildControllerReport())
 		case <-c.stopCh:
 			return
 		}
 	}
 }
-
 
 func (n *NSProCon) Setup() error {
 	err := setup.UsbGadgetHidCleanup(n.setupParams)
@@ -214,6 +300,7 @@ func (n *NSProCon) Start() error {
 }
 
 func (n *NSProCon) Stop() {
+	close(n.stopCh)
 	err := setup.UsbGadgetHidDisable(n.setupParams)
 	if err != nil {
 		log.Printf("can not disable usb gadget hid device in nsprocon: %v", err)
