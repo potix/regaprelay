@@ -57,34 +57,6 @@ const byte subCommandEnableImu                = 0x40
 const byte subCommandSetImuSensitivity        = 0x41
 const byte subCommandEnableVibration          = 0x48
 
-
-
-
-
-var spiRomData = map[byte][]byte{
-	0x60: []byte{
-		/* 0x6000 */ 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-		/* 0x6010 */             0x03, 0xa0,                                           0x02            
-		/* 0x6020 */ 0x05, 0x00, 0x53, 0x00, 0x94, 0x01, 0x00, 0x40, 0x00, 0x40, 0x00, 0x40, 0xf4, 0xff, 0x09, 0x00,
-		/* 0x6030 */ 0x01, 0x00, 0xe7, 0x3b, 0xe7, 0x3b, 0xe7, 0x3b,                               0x05, 0x96, 0x63,
-		/* 0x6040 */ 0xbc, 0xc7, 0x7a, 0x57, 0x46, 0x5e, 0x90, 0x87, 0x7b, 0x39, 0x86, 0x5e, 0xef, 0x15, 0x63, 0xff,
-		/* 0x6050 */ 0x32, 0x32, 0x32, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00,
-		/* 0x6060 */
-		/* 0x6070 */
-		/* 0x6080 */ 0x50, 0xfd, 0x00, 0x00, 0xc6, 0x0f, 0x0f, 0x30, 0x61, 0xae, 0x90, 0xd9, 0xd4, 0x14, 0x54, 0x41,
-		/* 0x6090 */ 0x15, 0x54, 0xc7, 0x79, 0x9c, 0x33, 0x36, 0x63, 0x0f, 0x30, 0x61, 0xae, 0x90, 0xd9, 0xd4, 0x14,
-		/* 0x60a0 */ 0x54, 0x41, 0x15, 0x54, 0xc7, 0x79, 0x9c, 0x33, 0x36, 0x63,
-
-	},
-	0x80: []byte{
-		/* 0x8000 */
-		/* 0x8010 */ 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-		/* 0x8020 */ 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff
-		/* 0x8030 */ 
-	},
-}
-
-
 type buttons struct {
         a            byte
         b            byte
@@ -277,8 +249,22 @@ func (n *NSProCon) readReportLoop(f * File) {
 					return
 				}
 			case subCommandReadSpi:
-				// XXXX TODO
-				// XXXX
+				var mem []byte
+				switch buf[12]:
+				case 0x60:
+					mem = n.spiMemory60
+				case 0x80:
+					mem = n.spiMemory80
+				default:
+					log.Printf("unsupported spi memory (%x:%x%v) to gadget device file: %w", 0x80, subCommandReadSpi, buf[12], buf[11] err)
+					return
+				}
+				err := writeReport(usbReportIdOutput21, buildOutput21(buildControllerReport(),
+					 0x90 /* ack */, subCommandReadSpi, buf[11:16], mem[buf[11]:buf[11] + buf[15]]))
+				if err != nil {
+					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %w", 0x90, subCommandReadSpi, err)
+					return
+				}
                         case subCommandSetNfcIrMcuConfiguration:
 				// XXX buf[11] ????
 				err := writeReport(usbReportIdOutput21, buildOutput21(buildControllerReport(), 0xa0 /* ack */, subCommandSetNfcIrMcuConfiguration,
@@ -389,16 +375,30 @@ func (n *NSProCon) buildControllerReport() []byte {
 	stickBytes[4] = uint8(((ry << 4) & 0xf0) | ((rx >> 8) & 0x0f))
 	stickBytes[5] = uint8((ry >> 4) & 0xff)
 	vibratorReport := uint8(0x00) /* XXX ???? */
-	if c.imuEnable != 0 {
-		// XXX  not supported imu in gamepad api
-		// XXX  no idea
-	}
 	return []byte{
 		timestamp, byte1, byte2, byte3, byte4,
 	        stickBytes[0], stickBytes[1], stickBytes[2],
 	        stickBytes[3], stickBytes[4], stickBytes[5],
 		vibratorReport,
 	 }
+}
+
+func (n *NSProCon) buildOutput21(controller []byte, ack byte, subCmd byte, dataList ...[]byte) []byte {
+	report := append(controller, ack, subcmd)
+	for _, data := range dataList {
+		report = append(report, data...)
+	}
+	return report
+}
+
+func (n *NSProCon) buildOutput30() []byte {
+	report := buildControllerReport()
+        if c.imuEnable != 0 {
+                // XXX  not supported imu in gamepad api
+                // XXX  no idea
+		// report = append(report, imu...)
+        }
+	return report
 }
 
 func (n *NSProCon) writeControllerReportLoop() {
