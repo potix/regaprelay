@@ -17,6 +17,7 @@ func main() {
 	_, err = rw.Write([]byte{ 0x80, 0x01 })
 	if err != nil {
 		log.Printf("can not write: %v", err)
+		return
 	}
 	rl, err := rw.Read(buf)
 	if err != nil {
@@ -32,5 +33,4 @@ func main() {
 		log.Printf("device type %x", buf[3:4])
 		log.Printf("macaddress %x", buf[4:10])
 	}
-	
 }
