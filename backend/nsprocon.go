@@ -283,7 +283,7 @@ func (n *NSProCon) readReportLoop(f * os.File) {
 		}
 		rl, err := f.Read(buf)
 		if err != nil {
-			log.Printf("can not read request report from gadget device file: %w", err)
+			log.Printf("can not read request report from gadget device file: %v", err)
 			return
 		}
 		switch buf[0] {
@@ -294,14 +294,14 @@ func (n *NSProCon) readReportLoop(f * os.File) {
 				reportBytes = append(reportBytes, n.macAddr...)
 				err = n.writeReport(f, usbReportIdOutput81, reportBytes)
 				if err != nil {
-					log.Printf("can not write reponse report (81) to gadget device file: %w", err)
+					log.Printf("can not write reponse report (81) to gadget device file: %v", err)
 					return
 				}
 				n.comState = comStateMac
 			case subTypeHandshake:
 				err = n.writeReport(f, usbReportIdOutput81, []byte{ buf[1] })
 				if err != nil {
-					log.Printf("can not write reponse report (81) to gadget device file: %w", err)
+					log.Printf("can not write reponse report (81) to gadget device file: %v", err)
 					return
 				}
 				if n.comState == comStateBaudRate  {
@@ -312,7 +312,7 @@ func (n *NSProCon) readReportLoop(f * os.File) {
 			case subTypeBaudRate:
 				err = n.writeReport(f, usbReportIdOutput81, []byte{ buf[1] })
 				if err != nil {
-					log.Printf("can not write reponse report (81) to gadget device file: %w", err)
+					log.Printf("can not write reponse report (81) to gadget device file: %v", err)
 					return
 				}
 				n.comState = comStateBaudRate
@@ -329,7 +329,7 @@ func (n *NSProCon) readReportLoop(f * os.File) {
 			// XXX buf[1]  = counter : What should i do?
 			err = n.sendVibrationRequest(buf[2:10])
 			if err != nil {
-				log.Printf("can not forward vibration report (01) to user: %w", err)
+				log.Printf("can not forward vibration report (01) to user: %v", err)
 			}
 			switch buf[10] {
 			case subCommandBluetoothManualPairing:
@@ -339,7 +339,7 @@ func (n *NSProCon) readReportLoop(f * os.File) {
 				err = n.writeReport(f, reportIdOutput21, n.buildOutput21(n.buildControllerReport(), 0x82 /* ack */, subCommandSetInputReportMode,
 					[]byte{ 0x03, 0x48, 0x03, 0x02 /* ??? */ }, n.reverseMacAddr, []byte{ 0x03 /* ??? */, 0x02 /* default */ } ))
 				if err != nil {
-					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %w", 0x80, subCommandSetInputReportMode, err)
+					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %v", 0x80, subCommandSetInputReportMode, err)
 					return
 				}
 			case subCommandSetInputReportMode:
@@ -348,14 +348,14 @@ func (n *NSProCon) readReportLoop(f * os.File) {
 				}
 				err = n.writeReport(f, reportIdOutput21, n.buildOutput21(n.buildControllerReport(), 0x80 /* ack */, subCommandSetInputReportMode))
 				if err != nil {
-					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %w", 0x80, subCommandSetInputReportMode, err)
+					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %v", 0x80, subCommandSetInputReportMode, err)
 					return
 				}
 			case subCommandSetShipmentLowPowerState:
 				// buf[11] nothig to do
 				err = n.writeReport(f, reportIdOutput21, n.buildOutput21(n.buildControllerReport(), 0x80 /* ack */, subCommandSetShipmentLowPowerState))
 				if err != nil {
-					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %w", 0x80, subCommandSetShipmentLowPowerState, err)
+					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %v", 0x80, subCommandSetShipmentLowPowerState, err)
 					return
 				}
 			case subCommandReadSpi:
@@ -366,13 +366,13 @@ func (n *NSProCon) readReportLoop(f * os.File) {
 				case 0x80:
 					mem = n.spiMemory80
 				default:
-					log.Printf("unsupported spi memory (%x:%x%x) to gadget device file: %w", 0x80, subCommandReadSpi, buf[12], buf[11], err)
+					log.Printf("unsupported spi memory (%x:%x%x) to gadget device file: %v", 0x80, subCommandReadSpi, buf[12], buf[11], err)
 					return
 				}
 				err = n.writeReport(f, reportIdOutput21, n.buildOutput21(n.buildControllerReport(),
 					 0x90 /* ack */, subCommandReadSpi, buf[11:16], mem[buf[11]:buf[11] + buf[15]]))
 				if err != nil {
-					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %w", 0x90, subCommandReadSpi, err)
+					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %v", 0x90, subCommandReadSpi, err)
 					return
 				}
                         case subCommandSetNfcIrMcuConfiguration:
@@ -381,34 +381,34 @@ func (n *NSProCon) readReportLoop(f * os.File) {
 				       []byte{ 0x01, 0x00, 0xff, 0x00, 0x03, 0x00, 0x05, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 					       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x5c, /* XXX ??? */} ))
 				if err != nil {
-					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %w", 0xa0, subCommandSetNfcIrMcuConfiguration, err)
+					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %v", 0xa0, subCommandSetNfcIrMcuConfiguration, err)
 					return
 				}
 			case subCommandSetPlayerLights:
 				// buf[11] nothig to do
 				err = n.writeReport(f, reportIdOutput21, n.buildOutput21(n.buildControllerReport(), 0x80 /* ack */, subCommandSetPlayerLights))
 				if err != nil {
-					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %w", 0x80, subCommandSetPlayerLights, err)
+					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %v", 0x80, subCommandSetPlayerLights, err)
 					return
 				}
 			case subCommand33:
 				err = n.writeReport(f, reportIdOutput21, n.buildOutput21(n.buildControllerReport(), 0x80 /* ack */, subCommand33, []byte{ 0x03 /* XXX ???? */ }))
 				if err != nil {
-					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %w", 0x80, subCommand33, err)
+					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %v", 0x80, subCommand33, err)
 					return
 				}
 			case subCommandSetHomeLight:
 				// buf[11:36] nothing to do
 				err = n.writeReport(f, reportIdOutput21, n.buildOutput21(n.buildControllerReport(), 0x80 /* ack */, subCommandSetHomeLight))
 				if err != nil {
-					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %w", 0x80, subCommandSetHomeLight, err)
+					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %v", 0x80, subCommandSetHomeLight, err)
 					return
 				}
 			case subCommandEnableImu:
 				n.imuEnable = buf[11]
 				err = n.writeReport(f, reportIdOutput21, n.buildOutput21(n.buildControllerReport(), 0x80 /* ack */, subCommandEnableImu))
 				if err != nil {
-					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %w", 0x80, subCommandEnableImu, err)
+					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %v", 0x80, subCommandEnableImu, err)
 					return
 				}
 			case subCommandSetImuSensitivity:
@@ -418,7 +418,7 @@ func (n *NSProCon) readReportLoop(f * os.File) {
                                 n.imuSensitivity.accelerometerFilterBandwidth = buf[14]
 				err = n.writeReport(f, reportIdOutput21, n.buildOutput21(n.buildControllerReport(), 0x80 /* ack */, subCommandSetImuSensitivity))
 				if err != nil {
-					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %w", 0x80, subCommandSetImuSensitivity, err)
+					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %v", 0x80, subCommandSetImuSensitivity, err)
 					return
 				}
 			case subCommandEnableVibration:
@@ -430,7 +430,7 @@ func (n *NSProCon) readReportLoop(f * os.File) {
 				}
 				err = n.writeReport(f, reportIdOutput21, n.buildOutput21(n.buildControllerReport(), 0x80 /* ack */, subCommandEnableVibration))
 				if err != nil {
-					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %w", 0x80, subCommandEnableVibration, err)
+					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %v", 0x80, subCommandEnableVibration, err)
 					return
 				}
 			default:
@@ -440,7 +440,7 @@ func (n *NSProCon) readReportLoop(f * os.File) {
 			// XXX buf[1]  = counter : What should i do?
 			err = n.sendVibrationRequest(buf[2:10])
 			if err != nil {
-				log.Printf("can not forward vibration report (10) to user: %w", err)
+				log.Printf("can not forward vibration report (10) to user: %v", err)
 			}
 		}
 	}
@@ -526,7 +526,7 @@ func (n *NSProCon) writeControllerReportLoop(f *os.File) {
 			}
 			err := n.writeReport(f, reportIdOutput30, n.buildControllerReport())
 			if err != nil {
-				log.Printf("can not write report (30) to gadget device file: %w", err)
+				log.Printf("can not write report (30) to gadget device file: %v", err)
 				return
 			}
 		case <-n.stopCh:
@@ -577,7 +577,7 @@ func (n *NSProCon) Stop() {
 	}
 	err = setup.UsbGadgetHidCleanup(n.setupParams)
 	if err != nil {
-		log.Printf("can not cleanup usb gadget hid device in nsprocon: %w", err)
+		log.Printf("can not cleanup usb gadget hid device in nsprocon: %v", err)
 	}
 }
 
