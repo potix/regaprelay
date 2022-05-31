@@ -15,12 +15,18 @@ const (
 )
 
 type gamepadOptions struct {
-        verbose bool
+        verbose     bool
+	devFilePath string
+	configsHome string
+	udc         string
 }
 
 func defaultGamepadOptions() *gamepadOptions {
         return &gamepadOptions {
                 verbose: false,
+		devFilePath: "",
+		configsHome: "",
+		udc: "",
         }
 }
 
@@ -29,6 +35,24 @@ type GamepadOption func(*gamepadOptions)
 func GamepadVerbose(verbose bool) GamepadOption {
         return func(opts *gamepadOptions) {
                 opts.verbose = verbose
+        }
+}
+
+func GamepadDevFilePath(devFilePath string) GamepadOption {
+        return func(opts *gamepadOptions) {
+                opts.devFilePath = devFilePath
+        }
+}
+
+func GamepadConfigsHome(configsHome string) GamepadOption {
+        return func(opts *gamepadOptions) {
+                opts.configsHome = configsHome
+        }
+}
+
+func GamepadUdc(udc string) GamepadOption {
+        return func(opts *gamepadOptions) {
+                opts.udc = udc
         }
 }
 
@@ -89,7 +113,7 @@ func (g *Gamepad) Stop() {
 	g.backendIf.Stop()
 }
 
-func NewGamepad(model GamepadModel, macAddr string, spiMemory60 string, spiMemory80 string, configsHome string, udc string,  opts ...GamepadOption) (*Gamepad, error) {
+func NewGamepad(model GamepadModel, macAddr string, spiMemory60 string, spiMemory80 string, opts ...GamepadOption) (*Gamepad, error) {
         baseOpts := defaultGamepadOptions()
         for _, opt := range opts {
                 if opt == nil {
@@ -100,12 +124,12 @@ func NewGamepad(model GamepadModel, macAddr string, spiMemory60 string, spiMemor
 	var err error
 	var newBackendIf backend.BackendIf
 	if model == ModelNSProCon {
-		newBackendIf, err = backend.NewNSProCon(baseOpts.verbose, macAddr, spiMemory60, spiMemory80, configsHome, udc)
+		newBackendIf, err = backend.NewNSProCon(baseOpts.verbose, macAddr, spiMemory60, spiMemory80, baseOpts.devFilePath, baseOpts.configsHome, baseOpts.udc)
 		if err != nil {
 			return nil, fmt.Errorf("can not create procon: %v", err)
 		}
 	} else if model == ModelPS4Con {
-		newBackendIf = backend.NewPS4Con(baseOpts.verbose, configsHome, udc)
+		newBackendIf = backend.NewPS4Con(baseOpts.verbose, baseOpts.devFilePath, baseOpts.configsHome, baseOpts.udc)
 	}
 	if newBackendIf == nil {
 		return nil, fmt.Errorf("unsupported model: %v", model)
