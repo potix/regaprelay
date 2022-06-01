@@ -579,29 +579,200 @@ func (n *NSProCon) Stop() {
 	}
 }
 
+func (n *NSProCon) boolToByte(v bool) byte {
+	if v {
+		return byte(1)
+	} else {
+		return byte(0)
+	}
+}
+
 func (n *NSProCon) UpdateState(state *handler.GamepadStateMessage) error {
-	// XXX TODO
-	log.Printf("state = %+v", state)
+	log.Printf("%+v", state)
+	log.Printf("%+v", state.Buttons)
+	log.Printf("%+v", state.Axes)
+	for i, button := range state.Buttons {
+		switch i {
+		case 0:
+			n.controller.buttons.b = n.boolToByte(button.Pressed)
+		case 1:
+			n.controller.buttons.a = n.boolToByte(button.Pressed)
+		case 2:
+			n.controller.buttons.y = n.boolToByte(button.Pressed)
+		case 3:
+			n.controller.buttons.x = n.boolToByte(button.Pressed)
+		case 4:
+			n.controller.buttons.l = n.boolToByte(button.Pressed)
+		case 5:
+			n.controller.buttons.r = n.boolToByte(button.Pressed)
+		case 6:
+			n.controller.buttons.zl = n.boolToByte(button.Pressed)
+		case 7:
+			n.controller.buttons.zr = n.boolToByte(button.Pressed)
+		case 8:
+			n.controller.buttons.minus = n.boolToByte(button.Pressed)
+		case 9:
+			n.controller.buttons.plus = n.boolToByte(button.Pressed)
+		case 10:
+			n.controller.leftStick.press = n.boolToByte(button.Pressed)
+		case 11:
+			n.controller.rightStick.press = n.boolToByte(button.Pressed)
+		case 12:
+			n.controller.buttons.up = n.boolToByte(button.Pressed)
+		case 13:
+			n.controller.buttons.down = n.boolToByte(button.Pressed)
+		case 14:
+			n.controller.buttons.left = n.boolToByte(button.Pressed)
+		case 15:
+			n.controller.buttons.right = n.boolToByte(button.Pressed)
+		case 16:
+			n.controller.buttons.home = n.boolToByte(button.Pressed)
+		case 17:
+			n.controller.buttons.capture = n.boolToByte(button.Pressed)
+		default:
+			log.Printf("can not update state because unsupported button in nsprocon: button index = %v", i)
+		}
+	}
+	for i, axis := range state.Axes {
+		switch i {
+		case 0:
+			n.controller.leftStick.x = axis
+		case 1:
+			n.controller.leftStick.y = axis
+		case 2:
+			n.controller.rightStick.x = axis
+		case 3:
+			n.controller.rightStick.y = axis
+		default:
+			log.Printf("can not update state because unsupported axis in nsprocon: axis index = %v", i)
+		}
+	}
+	log.Printf("buttons = %+v, left stick = %+v, right stick = %+v",
+		n.controller.buttons, n.controller.leftStick, n.controller.rightStick)
 	return nil
 }
 
 func (n *NSProCon) Press(buttons []ButtonName) error {
-	// XXX TODO
+	for _, button := range buttons {
+		switch button {
+		case ButtonA:
+			n.controller.buttons.a = 1
+		case ButtonB:
+			n.controller.buttons.b = 1
+		case ButtonX:
+			n.controller.buttons.x = 1
+		case ButtonY:
+			n.controller.buttons.y = 1
+		case ButtonLeft:
+			n.controller.buttons.left = 1
+		case ButtonRight:
+			n.controller.buttons.right = 1
+		case ButtonUp:
+			n.controller.buttons.up = 1
+		case ButtonDown:
+			n.controller.buttons.down = 1
+		case ButtonPlus:
+			n.controller.buttons.plus = 1
+		case ButtonMinus:
+			n.controller.buttons.minus = 1
+		case ButtonHome:
+			n.controller.buttons.home = 1
+		case ButtonCapture:
+			n.controller.buttons.capture = 1
+		case ButtonStickL:
+			n.controller.leftStick.press = 1
+		case ButtonStickR:
+			n.controller.rightStick.press = 1
+		case ButtonL:
+			n.controller.buttons.l = 1
+		case ButtonR:
+			n.controller.buttons.r = 1
+		case ButtonZL:
+			n.controller.buttons.zl = 1
+		case ButtonZR:
+			n.controller.buttons.zr = 1
+		case ButtonLeftSL:
+			n.controller.buttons.leftSl = 1
+		case ButtonLeftSR:
+			n.controller.buttons.leftSr = 1
+		case ButtonRightSL:
+			n.controller.buttons.rightSl = 1
+		case ButtonRightSR:
+			n.controller.buttons.rightSr = 1
+		case ButtonChargingGrip:
+			n.controller.buttons.chargingGrip = 1
+		default:
+			return fmt.Errorf("can not press because unsupported button in nsprocon: %v", button)
+		}
+	}
 	return nil
 }
 
 func (n *NSProCon) Release(buttons []ButtonName) error {
-	// XXX TODO
+	for _, button := range buttons {
+		switch button {
+		case ButtonA:
+			n.controller.buttons.a = 0
+		case ButtonB:
+			n.controller.buttons.b = 0
+		case ButtonX:
+			n.controller.buttons.x = 0
+		case ButtonY:
+			n.controller.buttons.y = 0
+		case ButtonLeft:
+			n.controller.buttons.left = 0
+		case ButtonRight:
+			n.controller.buttons.right = 0
+		case ButtonUp:
+			n.controller.buttons.up = 0
+		case ButtonDown:
+			n.controller.buttons.down = 0
+		case ButtonPlus:
+			n.controller.buttons.plus = 0
+		case ButtonMinus:
+			n.controller.buttons.minus = 0
+		case ButtonHome:
+			n.controller.buttons.home = 0
+		case ButtonCapture:
+			n.controller.buttons.capture = 0
+		case ButtonStickL:
+			n.controller.leftStick.press = 0
+		case ButtonStickR:
+			n.controller.rightStick.press = 0
+		case ButtonL:
+			n.controller.buttons.l = 0
+		case ButtonR:
+			n.controller.buttons.r = 0
+		case ButtonZL:
+			n.controller.buttons.zl = 0
+		case ButtonZR:
+			n.controller.buttons.zr = 0
+		case ButtonLeftSL:
+			n.controller.buttons.leftSl = 0
+		case ButtonLeftSR:
+			n.controller.buttons.leftSr = 0
+		case ButtonRightSL:
+			n.controller.buttons.rightSl = 0
+		case ButtonRightSR:
+			n.controller.buttons.rightSr = 0
+		case ButtonChargingGrip:
+			n.controller.buttons.chargingGrip = 0
+		default:
+			return fmt.Errorf("can not release because unsupported button in nsprocon: %v", button)
+		}
+	}
 	return nil
 }
 
 func (n *NSProCon) StickL(xAxis float64, yAxis float64) error {
-	// XXX TODO
+	n.controller.leftStick.x = xAxis
+	n.controller.leftStick.y = yAxis
 	return nil
 }
 
 func (n *NSProCon) StickR(xAxis float64, yAxis float64) error {
-	// XXX TODO
+	n.controller.rightStick.x = xAxis
+	n.controller.rightStick.y = yAxis
 	return nil
 }
 
@@ -670,7 +841,11 @@ func NewNSProCon(verbose bool, macAddr string, spiMemory60 string, spiMemory80 s
 		imuEnable: 0,
 		vibrationEnable: 0,
 		stopCh: make(chan int),
-		controller: &controller{},
+		controller: &controller{
+			buttons: &buttons{},
+			leftStick: &stick{},
+			rightStick: &stick{},
+		},
 		imuSensitivity: &imuSensitivity{},
 	}, nil
 }

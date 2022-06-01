@@ -32,13 +32,11 @@ type KeyboardWatcher struct {
 func (k *KeyboardWatcher) updateState(event keylogger.InputEvent) {
 	shiftChanged := false
 	changed := false
-	log.Printf("%+v", event)
-
 	switch event.Type {
 	case keylogger.EvKey:
 		key := event.KeyString()
 		if event.KeyPress() {
-			log.Printf("[event] press key ", key)
+			log.Printf("[event] press key %v", key)
 			if key == "L_SHIFT" {
 				// シフトが押された
 				k.shiftState = true
@@ -61,7 +59,7 @@ func (k *KeyboardWatcher) updateState(event keylogger.InputEvent) {
 				changed = true
 			}
 		} else if event.KeyRelease() {
-			log.Printf("[event] release key ", key)
+			log.Printf("[event] release key %v", key)
 			if key == "L_SHIFT" {
 				// シフトが離された
 				k.shiftState = false
@@ -254,7 +252,7 @@ func NewKeyboardWatcher(gpad *gamepad.Gamepad, keyboardDevice string, mode Mode)
 		 "C", // 8 : Minux
 		 "N", // 9 : Plus
 		 "Q", // 10: LStick
-		 "P", // 11: RStick
+		 "O", // 11: RStick
 		 "W", // 12: Up
 		 "S", // 13: Down
 		 "A", // 14: Left
@@ -280,7 +278,7 @@ func NewKeyboardWatcher(gpad *gamepad.Gamepad, keyboardDevice string, mode Mode)
 		"V": gamepad.ButtonCapture,
 		"B": gamepad.ButtonHome,
 		"Q": gamepad.ButtonStickL,
-		"P": gamepad.ButtonStickR,
+		"O": gamepad.ButtonStickR,
 	}
 	buttonsState := map[string]bool{
 		"W": false, // ButtonUp
@@ -300,7 +298,7 @@ func NewKeyboardWatcher(gpad *gamepad.Gamepad, keyboardDevice string, mode Mode)
 		"V": false, // ButtonCapture
 		"B": false, // ButtonHome
 		"Q": false, // ButtonStickL
-		"P": false, // ButtonStickR
+		"O": false, // ButtonStickR
 	}
 	sticksState := map[string]bool{
 		"W": false, // left stick up
