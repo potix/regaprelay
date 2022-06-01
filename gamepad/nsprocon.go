@@ -56,6 +56,7 @@ const (
 	subCommandBluetoothManualPairing   byte = 0x01
 	subCommandRequestDeviceInfo             = 0x02
 	subCommandSetInputReportMode            = 0x03
+	subCommandTriggerButtonsElapsedTime     = 0x04
 	subCommandSetShipmentLowPowerState      = 0x08
 	subCommandReadSpi                       = 0x10
 	subCommandSetNfcIrMcuConfiguration      = 0x21
@@ -271,6 +272,14 @@ func (n *NSProCon) sendVibrationRequest(bytes []byte) error {
 	return nil
 }
 
+func (n *NSProCon) buildAck(subCmd byte, existsReportData bool) byte {
+	ack := byte(0x80)
+	if existsReportData {
+		ack |= subCmd
+	}
+	return ack
+}
+
 func (n *NSProCon) readReportLoop(f * os.File) {
 	buf := make([]byte, 64)
 	for {
@@ -284,6 +293,7 @@ func (n *NSProCon) readReportLoop(f * os.File) {
 			log.Printf("can not read request report from gadget device file: %v", err)
 			return
 		}
+		log.Printf("read %x", buf[:rl])
 		switch buf[0] {
 		case usbReportIdInput80:
 			switch buf[1] {
@@ -331,29 +341,45 @@ func (n *NSProCon) readReportLoop(f * os.File) {
 			}
 			switch buf[10] {
 			case subCommandBluetoothManualPairing:
-				// XXX ignore
-				log.Printf("ignore bluetooth manual pairing")
-			case subCommandRequestDeviceInfo:
-				err = n.writeReport(f, reportIdOutput21, n.buildOutput21(n.buildControllerReport(), 0x82 /* ack */, subCommandSetInputReportMode,
-					[]byte{ 0x03, 0x48, 0x03, 0x02 /* ??? */ }, n.reverseMacAddr, []byte{ 0x03 /* ??? */, 0x02 /* default */ } ))
+				// XXXX buf[11:43] ???
+				ack := n.buildAck(subCommandBluetoothManualPairing, true)
+				err = n.writeReport(f, reportIdOutput21, n.buildOutput21(n.buildControllerReport(), ack, subCommandBluetoothManualPairing,
+					[]byte{ 0x03, 0x01 } /* ???? */))
 				if err != nil {
-					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %v", 0x80, subCommandSetInputReportMode, err)
+					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %v", ack, subCommandBluetoothManualPairing, err)
+					return
+				}
+			case subCommandRequestDeviceInfo:
+				ack := n.buildAck(subCommandRequestDeviceInfo, true)
+				err = n.writeReport(f, reportIdOutput21, n.buildOutput21(n.buildControllerReport(), ack, subCommandRequestDeviceInfo,
+					[]byte{ 0x03, 0x48, 0x03, 0x02 }, n.reverseMacAddr, []byte{ 0x03 /* ??? */, 0x02 /* default */ } ))
+				if err != nil {
+					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %v", ack, subCommandRequestDeviceInfo, err)
 					return
 				}
 			case subCommandSetInputReportMode:
 				if buf[11] == 0x30 {
 					log.Printf("Standard full mode. Pushes current state @60Hz")
 				}
-				err = n.writeReport(f, reportIdOutput21, n.buildOutput21(n.buildControllerReport(), 0x80 /* ack */, subCommandSetInputReportMode))
+				ack := n.buildAck(subCommandSetInputReportMode, false)
+				err = n.writeReport(f, reportIdOutput21, n.buildOutput21(n.buildControllerReport(), ack, subCommandSetInputReportMode))
 				if err != nil {
-					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %v", 0x80, subCommandSetInputReportMode, err)
+					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %v", ack, subCommandSetInputReportMode, err)
 					return
 				}
+			case subCommandTriggerButtonsElapsedTime:
+				err = n.writeReport(f, reportIdOutput21, n.buildOutput21(n.buildControllerReport(), 0x83 /* from dump */, subCommandTriggerButtonsElapsedTime))
+				if err != nil {
+					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %v", 0x83 /* from dump */, subCommandTriggerButtonsElapsedTime, err)
+					return
+				}
+
 			case subCommandSetShipmentLowPowerState:
 				// buf[11] nothig to do
-				err = n.writeReport(f, reportIdOutput21, n.buildOutput21(n.buildControllerReport(), 0x80 /* ack */, subCommandSetShipmentLowPowerState))
+				ack := n.buildAck(subCommandSetInputReportMode, false)
+				err = n.writeReport(f, reportIdOutput21, n.buildOutput21(n.buildControllerReport(), ack, subCommandSetShipmentLowPowerState))
 				if err != nil {
-					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %v", 0x80, subCommandSetShipmentLowPowerState, err)
+					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %v", ack, subCommandSetShipmentLowPowerState, err)
 					return
 				}
 			case subCommandReadSpi:
@@ -364,49 +390,67 @@ func (n *NSProCon) readReportLoop(f * os.File) {
 				case 0x80:
 					mem = n.spiMemory80
 				default:
-					log.Printf("unsupported spi memory (%x:%x%x) to gadget device file: %v", 0x80, subCommandReadSpi, buf[12], buf[11], err)
+					log.Printf("unsupported spi memory address (%x:%x%x) to gadget device file: %v", subCommandReadSpi, buf[12], buf[11], err)
+					err = n.writeReport(f, reportIdOutput21, n.buildOutput21(n.buildControllerReport(), 0x00, subCommandReadSpi))
+					if err != nil {
+						log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %v", 0x00, subCommandReadSpi, err)
+						return
+					}
 					return
 				}
+				if len(mem) < int(buf[11] + buf[15]) {
+					log.Printf("unsupported spi memory address (%x:%x%x) to gadget device file: %v", subCommandReadSpi, buf[12], buf[11], err)
+					err = n.writeReport(f, reportIdOutput21, n.buildOutput21(n.buildControllerReport(), 0x00, subCommandReadSpi))
+					if err != nil {
+						log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %v", 0x00, subCommandReadSpi, err)
+						return
+					}
+				}
+				ack := n.buildAck(subCommandReadSpi, true)
 				err = n.writeReport(f, reportIdOutput21, n.buildOutput21(n.buildControllerReport(),
-					 0x90 /* ack */, subCommandReadSpi, buf[11:16], mem[buf[11]:buf[11] + buf[15]]))
+					 ack, subCommandReadSpi, buf[11:16], mem[buf[11]:buf[11] + buf[15]]))
 				if err != nil {
-					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %v", 0x90, subCommandReadSpi, err)
+					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %v", ack, subCommandReadSpi, err)
 					return
 				}
                         case subCommandSetNfcIrMcuConfiguration:
+				// ignore????
 				// XXX buf[11] ????
-				err = n.writeReport(f, reportIdOutput21, n.buildOutput21(n.buildControllerReport(), 0xa0 /* ack */, subCommandSetNfcIrMcuConfiguration,
+				err = n.writeReport(f, reportIdOutput21, n.buildOutput21(n.buildControllerReport(), 0xa0 /* from dump */, subCommandSetNfcIrMcuConfiguration,
 				       []byte{ 0x01, 0x00, 0xff, 0x00, 0x03, 0x00, 0x05, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 					       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x5c, /* XXX ??? */} ))
 				if err != nil {
-					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %v", 0xa0, subCommandSetNfcIrMcuConfiguration, err)
+					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %v", 0xa0 /* from dump */, subCommandSetNfcIrMcuConfiguration, err)
 					return
 				}
 			case subCommandSetPlayerLights:
 				// buf[11] nothig to do
-				err = n.writeReport(f, reportIdOutput21, n.buildOutput21(n.buildControllerReport(), 0x80 /* ack */, subCommandSetPlayerLights))
+				ack := n.buildAck(subCommandSetPlayerLights, false)
+				err = n.writeReport(f, reportIdOutput21, n.buildOutput21(n.buildControllerReport(), ack, subCommandSetPlayerLights))
 				if err != nil {
-					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %v", 0x80, subCommandSetPlayerLights, err)
+					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %v", ack, subCommandSetPlayerLights, err)
 					return
 				}
 			case subCommand33:
-				err = n.writeReport(f, reportIdOutput21, n.buildOutput21(n.buildControllerReport(), 0x80 /* ack */, subCommand33, []byte{ 0x03 /* XXX ???? */ }))
+				err = n.writeReport(f, reportIdOutput21, n.buildOutput21(n.buildControllerReport(), 0x80 /* from dump */, subCommand33, []byte{ 0x03 /* XXX ???? */ }))
 				if err != nil {
-					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %v", 0x80, subCommand33, err)
+					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %v", 0x80 /* from dump */, subCommand33, err)
 					return
 				}
 			case subCommandSetHomeLight:
 				// buf[11:36] nothing to do
-				err = n.writeReport(f, reportIdOutput21, n.buildOutput21(n.buildControllerReport(), 0x80 /* ack */, subCommandSetHomeLight))
+				ack := n.buildAck(subCommandSetHomeLight, false)
+				err = n.writeReport(f, reportIdOutput21, n.buildOutput21(n.buildControllerReport(), ack, subCommandSetHomeLight))
 				if err != nil {
-					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %v", 0x80, subCommandSetHomeLight, err)
+					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %v", ack, subCommandSetHomeLight, err)
 					return
 				}
 			case subCommandEnableImu:
 				n.imuEnable = buf[11]
-				err = n.writeReport(f, reportIdOutput21, n.buildOutput21(n.buildControllerReport(), 0x80 /* ack */, subCommandEnableImu))
+				ack := n.buildAck(subCommandEnableImu, false)
+				err = n.writeReport(f, reportIdOutput21, n.buildOutput21(n.buildControllerReport(), ack, subCommandEnableImu))
 				if err != nil {
-					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %v", 0x80, subCommandEnableImu, err)
+					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %v", ack, subCommandEnableImu, err)
 					return
 				}
 			case subCommandSetImuSensitivity:
@@ -414,9 +458,10 @@ func (n *NSProCon) readReportLoop(f * os.File) {
                                 n.imuSensitivity.accelerometerSensitivity     = buf[12]
                                 n.imuSensitivity.gyroPerformanceRate          = buf[13]
                                 n.imuSensitivity.accelerometerFilterBandwidth = buf[14]
-				err = n.writeReport(f, reportIdOutput21, n.buildOutput21(n.buildControllerReport(), 0x80 /* ack */, subCommandSetImuSensitivity))
+				ack := n.buildAck(subCommandSetImuSensitivity, false)
+				err = n.writeReport(f, reportIdOutput21, n.buildOutput21(n.buildControllerReport(), ack, subCommandSetImuSensitivity))
 				if err != nil {
-					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %v", 0x80, subCommandSetImuSensitivity, err)
+					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %v", ack, subCommandSetImuSensitivity, err)
 					return
 				}
 			case subCommandEnableVibration:
@@ -426,9 +471,10 @@ func (n *NSProCon) readReportLoop(f * os.File) {
 				} else {
 					log.Printf("vibration enabled")
 				}
-				err = n.writeReport(f, reportIdOutput21, n.buildOutput21(n.buildControllerReport(), 0x80 /* ack */, subCommandEnableVibration))
+				ack := n.buildAck(subCommandEnableVibration, false)
+				err = n.writeReport(f, reportIdOutput21, n.buildOutput21(n.buildControllerReport(), ack, subCommandEnableVibration))
 				if err != nil {
-					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %v", 0x80, subCommandEnableVibration, err)
+					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %v", ack, subCommandEnableVibration, err)
 					return
 				}
 			default:
@@ -638,11 +684,11 @@ func (n *NSProCon) UpdateState(state *handler.GamepadStateMessage) error {
 		case 0:
 			n.controller.leftStick.x = axis
 		case 1:
-			n.controller.leftStick.y = axis
+			n.controller.leftStick.y = axis * -1.0
 		case 2:
 			n.controller.rightStick.x = axis
 		case 3:
-			n.controller.rightStick.y = axis
+			n.controller.rightStick.y = axis * -1.0
 		default:
 			log.Printf("can not update state because unsupported axis in nsprocon: axis index = %v", i)
 		}
@@ -766,13 +812,13 @@ func (n *NSProCon) Release(buttons []ButtonName) error {
 
 func (n *NSProCon) StickL(xAxis float64, yAxis float64) error {
 	n.controller.leftStick.x = xAxis
-	n.controller.leftStick.y = yAxis
+	n.controller.leftStick.y = yAxis * -1.0
 	return nil
 }
 
 func (n *NSProCon) StickR(xAxis float64, yAxis float64) error {
 	n.controller.rightStick.x = xAxis
-	n.controller.rightStick.y = yAxis
+	n.controller.rightStick.y = yAxis * -1.0
 	return nil
 }
 
