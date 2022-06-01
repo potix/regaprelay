@@ -106,7 +106,7 @@ func (k *KeyboardWatcher) updateState(event keylogger.InputEvent) {
 	// 何か変化があったらgamepadに送る
 	if changed || shiftChanged {
 		if k.mode == ModeBulk {
-			buttons := make([]*handler.GamepadButtonMessage, 17)
+			buttons := make([]*handler.GamepadButtonMessage, 18)
 			for i, key := range k.gamepadButtonsOrder {
 				pressed, ok := k.buttonsState[key]
 				if !ok {
