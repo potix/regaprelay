@@ -219,7 +219,9 @@ func (n *NSProCon) writeReport(f *os.File, reportId byte, reportBytes []byte) (e
 	if wl != len(buf) {
 		return fmt.Errorf("partial write report (%x) to gadget device file: write len = %v", reportId, wl)
 	}
-	log.Printf("wrote %x", buf)
+	if n.verbose {
+		log.Printf("wrote %x", buf)
+	}
 	return nil
 }
 
@@ -231,37 +233,44 @@ func (n *NSProCon) sendVibrationRequest(bytes []byte) error {
 	   bytes[4] == 0 && bytes[5] == 0 && bytes[6] == 0 && bytes[7] == 0 {
 		return nil
 	}
-	var lhf uint16 = uint16(bytes[1]&0x01)<<8 | uint16(bytes[0])
+	//var lhf uint16 = uint16(bytes[1]&0x01)<<8 | uint16(bytes[0])
 	var lhfAmp uint8 = uint8(bytes[1] & 0xfe)
-	var llf uint8 = uint8(bytes[2] & 0x7f)
+	//var llf uint8 = uint8(bytes[2] & 0x7f)
 	var llfAmp uint16 = uint16(bytes[2]&0x80)<<8 | uint16(bytes[3])
-	var rhf uint16 = uint16(bytes[5]&0x01)<<8 | uint16(bytes[4])
+	//var rhf uint16 = uint16(bytes[5]&0x01)<<8 | uint16(bytes[4])
 	var rhfAmp uint8 = uint8(bytes[5] & 0xfe)
-	var rlf uint8 = uint8(bytes[6] & 0x7f)
+	//var rlf uint8 = uint8(bytes[6] & 0x7f)
 	var rlfAmp uint16 = uint16(bytes[6]&0x80)<<8 | uint16(bytes[7])
-	log.Printf("lhf = %v, lhfAmp = %v, llf = %v, llfAmp = %v", lhf, lhfAmp, llf, llfAmp)
-	log.Printf("rhf = %v, rhfAmp = %v, rlf = %v, rlfAmp = %v", rhf, rhfAmp, rlf, rlfAmp)
 	lhamp, ok := vibrationAmpHfaMap[lhfAmp]
 	if !ok {
-		return fmt.Errorf("mot found amplitude (%v)", lhfAmp)
+		return fmt.Errorf("ont found left hight amplitude (%v)", lhfAmp)
 	}
 	llamp, ok := vibrationAmpLfaMap[llfAmp]
 	if !ok {
-		return fmt.Errorf("mot found amplitude (%v)", llfAmp)
+		return fmt.Errorf("not found left low amplitude (%v)", llfAmp)
 	}
-	rhamp, ok := vibrationAmpHfaMap[lhfAmp]
+	rhamp, ok := vibrationAmpHfaMap[rhfAmp]
 	if !ok {
-		return fmt.Errorf("mot found amplitude (%v)", lhfAmp)
+		return fmt.Errorf("not found right high amplitude (%v)", rhfAmp)
 	}
-	rlamp, ok := vibrationAmpLfaMap[llfAmp]
+	rlamp, ok := vibrationAmpLfaMap[rlfAmp]
 	if !ok {
-		return fmt.Errorf("mot found amplitude (%v)", llfAmp)
+		return fmt.Errorf("not found right low amplitude (%v)", rlfAmp)
 	}
 	if lhamp == 0 && llamp == 0 && rhamp == 0 && rlamp == 0 {
 		return nil
 	}
+	if n.verbose {
+		log.Printf("lhamp = %v, llamp = %v, rhamp = %v, rlamp = %v", lhamp, llamp, rhamp, rlamp)
+	}
 	hamp := float64(lhamp + rhamp) / 2.0 / 1000.0
 	lamp := float64(llamp + rlamp) / 2.0 / 1000.0
+	if hamp > 1 {
+		hamp = 1.0
+	}
+	if lamp > 1 {
+		lamp = 1.0
+	}
 	vibrationMessage := &handler.GamepadVibrationMessage {
 		Duration:        1000,
 		StartDelay:      0,
@@ -293,7 +302,9 @@ func (n *NSProCon) readReportLoop(f * os.File) {
 			log.Printf("can not read request report from gadget device file: %v", err)
 			return
 		}
-		log.Printf("read %x", buf[:rl])
+		if n.verbose {
+			log.Printf("read %x", buf[:rl])
+		}
 		switch buf[0] {
 		case usbReportIdInput80:
 			switch buf[1] {
@@ -341,10 +352,12 @@ func (n *NSProCon) readReportLoop(f * os.File) {
 			}
 			switch buf[10] {
 			case subCommandBluetoothManualPairing:
-				// XXXX buf[11:43] ???
+				// buf[11:43] ???
+				// skip 0x81 01 01, 0x81 01 02
+				// last response only
 				ack := n.buildAck(subCommandBluetoothManualPairing, true)
 				err = n.writeReport(f, reportIdOutput21, n.buildOutput21(n.buildControllerReport(), ack, subCommandBluetoothManualPairing,
-					[]byte{ 0x03, 0x01 } /* ???? */))
+					[]byte{ 0x03 } ))
 				if err != nil {
 					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %v", ack, subCommandBluetoothManualPairing, err)
 					return
@@ -359,7 +372,9 @@ func (n *NSProCon) readReportLoop(f * os.File) {
 				}
 			case subCommandSetInputReportMode:
 				if buf[11] == 0x30 {
-					log.Printf("Standard full mode. Pushes current state @60Hz")
+					if n.verbose {
+						log.Printf("Standard full mode. Pushes current state @60Hz")
+					}
 				}
 				ack := n.buildAck(subCommandSetInputReportMode, false)
 				err = n.writeReport(f, reportIdOutput21, n.buildOutput21(n.buildControllerReport(), ack, subCommandSetInputReportMode))
@@ -466,10 +481,12 @@ func (n *NSProCon) readReportLoop(f * os.File) {
 				}
 			case subCommandEnableVibration:
 				n.vibrationEnable = buf[11]
-				if n.vibrationEnable == 0 {
-					log.Printf("vibration disabled")
-				} else {
-					log.Printf("vibration enabled")
+				if n.verbose {
+					if n.vibrationEnable == 0 {
+						log.Printf("vibration disabled")
+					} else {
+						log.Printf("vibration enabled")
+					}
 				}
 				ack := n.buildAck(subCommandEnableVibration, false)
 				err = n.writeReport(f, reportIdOutput21, n.buildOutput21(n.buildControllerReport(), ack, subCommandEnableVibration))
@@ -634,9 +651,6 @@ func (n *NSProCon) boolToByte(v bool) byte {
 }
 
 func (n *NSProCon) UpdateState(state *handler.GamepadStateMessage) error {
-	log.Printf("%+v", state)
-	log.Printf("%+v", state.Buttons)
-	log.Printf("%+v", state.Axes)
 	for i, button := range state.Buttons {
 		switch i {
 		case 0:
@@ -693,8 +707,10 @@ func (n *NSProCon) UpdateState(state *handler.GamepadStateMessage) error {
 			log.Printf("can not update state because unsupported axis in nsprocon: axis index = %v", i)
 		}
 	}
-	log.Printf("buttons = %+v, left stick = %+v, right stick = %+v",
-		n.controller.buttons, n.controller.leftStick, n.controller.rightStick)
+	if n.verbose {
+		log.Printf("buttons = %+v, left stick = %+v, right stick = %+v",
+			n.controller.buttons, n.controller.leftStick, n.controller.rightStick)
+	}
 	return nil
 }
 
