@@ -8,24 +8,8 @@ import (
         "github.com/potix/utils/configurator"
         "github.com/potix/regaprelay/gamepad"
         "github.com/potix/regaprelay/watcher"
-	"github.com/azul3d/engine/keyboard"
         "log"
 )
-
-}
-
-func newKeyboardWatcher() *keyboardWatcher {
-	return &keyboardWatcher{
-		watcher: keyboard.NewWatcher(),
-		stopCh: make(chan int),
-	}
-}
-
-
-
-
-
-
 
 
 type gpadtestGamepadConfig struct {
@@ -44,8 +28,9 @@ type gpadtestConfig struct {
 }
 
 type commandArguments struct {
-        configFile string
-        mode string
+        configFile     string
+        mode           string
+        keyboardDevice string
 }
 
 func verboseLoadedConfig(config *gpadtestConfig) {
@@ -67,7 +52,8 @@ func onVibration(vibration *handler.GamepadVibrationMessage) {
 func main() {
         cmdArgs := new(commandArguments)
         flag.StringVar(&cmdArgs.configFile, "config", "./gpadtest.conf", "config file")
-        flag.StringVar(&cmdArgs.mode, "mode", "bulk", "mode('bulk' or 'split')")
+        flag.StringVar(&cmdArgs.keyboardDevice, "keyDev", "", "keyboard device ('' is auto)")
+        flag.StringVar(&cmdArgs.mode, "mode", "bulk", "mode ('bulk' or 'split')")
         flag.Parse()
         cf, err := configurator.NewConfigurator(cmdArgs.configFile)
         if err != nil {
@@ -93,7 +79,15 @@ func main() {
 	}
         newGamepad.StartVibrationListener(onVibration)
 	// setup watcher
-	newKeyboardWatcher := watcher.NewKeyboardWatcher(newGamepad, cmdArgs.mode)
+	var mode watcher.Mode = watcher.ModeBulk
+	if cmdArgs.mode == "split" {
+		mode = watcher.ModeSplit
+	}
+	newKeyboardWatcher, err := watcher.NewKeyboardWatcher(newGamepad, cmdArgs.keyboardDevice, mode)
+	if err != nil {
+		log.Fatalf("can not create keyboard watcher: %v", err)
+	}
+
 	// start gamepad
 	err = newGamepad.Start()
 	if err != nil {

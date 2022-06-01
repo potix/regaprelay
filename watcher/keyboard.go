@@ -2,116 +2,102 @@ package watcher
 
 import (
         "github.com/potix/regaprelay/gamepad"
-	"github.com/azul3d/engine/keyboard"
+	"github.com/potix/regapweb/handler"
+	"github.com/MarinX/keylogger"
         "log"
-        "time"
+        "fmt"
 )
 
 type Mode string
 
 const (
-	Split mode = "Split"
-	Bulk       = "Bulk"
+	ModeSplit Mode = "Split"
+	ModeBulk       = "Bulk"
 )
 
 type KeyboardWatcher struct {
-	watcher      *keyboard.watcher
-	gamepad      *gamepad.Gamepad
-	mode         Mode
-	buttonsState map[keyboard.Key]keyboard.State
-	sticksState  map[keyboard.Key]keyboard.State
-	shiftState   keyboard.State
-	checkKeys    []keyboard.Key
-	stickToggle  bool
-	stopCh       chan int
+	keyLogger           *keylogger.KeyLogger
+	gamepad             *gamepad.Gamepad
+	mode                Mode
+	gamepadButtonsOrder []string
+	gamepadButtonsMap   map[string]gamepad.ButtonName
+	buttonsState        map[string]bool
+	sticksState         map[string]bool
+	shiftState          bool
+	checkKeys           []string
+	stickToggle         bool
+	stopCh              chan int
 }
 
-func (k *keyboardWatcher) watch() {
-	shiftChanged = false
-	changed = false
-	status := k.watcher.States()
-	for _, key :=  range k.checkKeys {
-		newState := status[key]
-		if newState == keyboard.Up {
-			if key == keyboard.LeftShift {
+func (k *KeyboardWatcher) updateState(event keylogger.InputEvent) {
+	shiftChanged := false
+	changed := false
+	log.Printf("%+v", event)
+
+	switch event.Type {
+	case keylogger.EvKey:
+		key := event.KeyString()
+		if event.KeyPress() {
+			log.Printf("[event] press key ", key)
+			if key == "L_SHIFT" {
 				// シフトが押された
-				if l.shiftState == keyboard.Down {
-					k.shiftState = newState
-					shiftChanged = true
-				}
+				k.shiftState = true
+				shiftChanged = true
 			} else if k.stickToggle {
-				oldState, ok = k.sticksState[key]
+				_, ok := k.sticksState[key]
 				if !ok {
-					continue
+					break
 				}
 				// スティックが動かされた
-				if oldState == keyboard.Down {
-					k.sticksState[key] = newState
-					changed = true
-				}
+				k.sticksState[key] = true
+				changed = true
 			} else {
-				oldState, ok = k.buttonsState[key]
+				_, ok := k.buttonsState[key]
 				if !ok {
-					continue
+					break
 				}
 				// ボタンが押された
-				if oldState == keyboard.Down {
-					k.buttonsState[key] = newState
-					changed = true
-				}
+				k.buttonsState[key] = true
+				changed = true
 			}
-		} else if s == keyboard.Down {
-			if key == keyboard.LeftShift {
+		} else if event.KeyRelease() {
+			log.Printf("[event] release key ", key)
+			if key == "L_SHIFT" {
 				// シフトが離された
-				if l.shiftState == keyboard.Up {
-					k.shiftState = newState
-				}
+				k.shiftState = false
 			} else if k.stickToggle {
-				oldState, ok = k.sticksState[key]
+				_, ok := k.sticksState[key]
 				if !ok {
-					continue
+					break
 				}
 				// スティックが動きをとめた
-				if oldState == keyboard.Up {
-					k.sticksState[key] = newState
-					changed = true
-				}
+				k.sticksState[key] = false
+				changed = true
 			} else {
-				oldState, ok = k.buttonsState[key]
+				_, ok := k.buttonsState[key]
 				if !ok {
-					continue
+					break
 				}
 				// ボタンが離された
-				if oldState == keyboard.Up {
-					k.buttonsState[key] = newState
-					changed = true
-				}
+				k.buttonsState[key] = false
+				changed = true
 			}
-
 		}
 	}
 	// shiftが押されていた場合の処理
 	if shiftChanged {
 		// stickToggleを切り替えるので片方は一回リセット
 		if k.stickToggle {
-			for _, key :=  range keys {
-				_, ok = k.sticksState[key]
-				if !ok {
-					continue
-				}
-				k.sticksState[key] = keyboard.Up
+			for key, _ := range k.sticksState {
+				k.sticksState[key] = false
 			}
 		} else {
-			for _, key :=  range keys {
-				_, ok = k.buttonsState[key]
-				if !ok {
-					continue
-				}
-				k.buttonsState[key] = keyboard.Up
+			for key, _ :=  range k.buttonsState {
+				k.buttonsState[key] = false
 			}
 		}
 		// stickToggle変更
-		if k.stickToggle == false {
+		if k.stickToggle {
 			k.stickToggle = false
 		} else  {
 			k.stickToggle = true
@@ -119,41 +105,21 @@ func (k *keyboardWatcher) watch() {
 	}
 	// 何か変化があったらgamepadに送る
 	if changed || shiftChanged {
-		if k.mode == Bulk {
-			buttons := make([]*GamepadButtonMessage, 17)
-			keyOder := []keyboard.Key{
-				 keyboard.K, // 0 : B 
-				 keyboard.L, // 1 : A
-				 keyboard.J, // 2 : Y
-				 keyboard.I, // 3 : X
-				 keyboard.F, // 4 : L
-				 keyboard.H, // 5 : R
-				 keyboard.E, // 6 : ZL
-				 keyboard.U, // 7 : ZR
-				 keyboard.C, // 8 : Minux
-				 keyboard.N, // 9 : Plus
-				 keyboard.Q, // 10: LStick
-				 keyboard.P, // 11: RStick
-				 keyboard.W, // 12: Up
-				 keyboard.S, // 13: Down
-				 keyboard.A, // 14: Left
-				 keyboard.D, // 15: Right
-				 keyboard.B, // 16: Home
-				 keyboard.V, // 17: Capture
-			}
-			for i, key := keyOrder {
-				state, ok = k.buttonsState[key]
+		if k.mode == ModeBulk {
+			buttons := make([]*handler.GamepadButtonMessage, 17)
+			for i, key := range k.gamepadButtonsOrder {
+				pressed, ok := k.buttonsState[key]
 				if !ok {
 					log.Fatalf("not found key (%v,%v)", i, key)
 				}
-				if state == keyboard.Down {
-					buttons[i] = &GamepadButtonMessage{
+				if pressed {
+					buttons[i] = &handler.GamepadButtonMessage{
 						Pressed: true,
 						Touched: true,
 						Value: 1.0,
 					}
 				} else {
-					buttons[i] = &GamepadButtonMessage{
+					buttons[i] = &handler.GamepadButtonMessage{
 						Pressed: false,
 						Touched: false,
 						Value: 0.0,
@@ -161,38 +127,38 @@ func (k *keyboardWatcher) watch() {
 				}
 			}
 			axes := make([]float64, 4)
-			for key, state := k.sticksState {
+			for key, pressed := range k.sticksState {
 				switch key {
-				case keyboard.W:
-					if state == keyboard.Down {
+				case "W":
+					if pressed {
 						axes[1] += -1.0
 					}
-				case keyboard.S:
-					if state == keyboard.Down {
+				case "S":
+					if pressed {
 						axes[1] += 1.0
 					}
-				case keyboard.A:
-					if state == keyboard.Down {
+				case "A":
+					if pressed {
 						axes[0] += -1.0
 					}
-				case keyboard.D:
-					if state == keyboard.Down {
+				case "D":
+					if pressed {
 						axes[0] += 1.0
 					}
-				case keyboard.I:
-					if state == keyboard.Down {
+				case "I":
+					if pressed {
 						axes[3] += -1.0
 					}
-				case keyboard.K:
-					if state == keyboard.Down {
+				case "K":
+					if pressed {
 						axes[3] += 1.0
 					}
-				case keyboard.J:
-					if state == keyboard.Down {
+				case "J":
+					if pressed {
 						axes[2] += -1.0
 					}
-				case keyboard.L:
-					if state == keyboard.Down {
+				case "L":
+					if pressed {
 						axes[2] += 1.0
 					}
 				}
@@ -202,155 +168,54 @@ func (k *keyboardWatcher) watch() {
 				Axes: axes,
 			}
 			k.gamepad.UpdateState(gamepadStateMessage)
-		} k.mode == Split {
-			for key, state := k.buttonsState {
-				switch key {
-				case keyboard.W:
-					if state == keyboard.Down {
-						k.gamepad.Press(gamepad.ButtonUp)
-					} else {
-						k.gamepad.Release(gamepad.ButtonUp)
-					}
-				case keyboard.S:
-					if state == keyboard.Down {
-						k.gamepad.Press(gamepad.ButtonDown)
-					} else {
-						k.gamepad.Release(gamepad.ButtonDown)
-					}
-				case keyboard.A:
-					if state == keyboard.Down {
-						k.gamepad.Press(gamepad.ButtonLeft)
-					} else {
-						k.gamepad.Release(gamepad.ButtonLeft)
-					}
-				case keyboard.D:
-					if state == keyboard.Down {
-						k.gamepad.Press(gamepad.ButtonRight)
-					} else {
-						k.gamepad.Release(gamepad.ButtonRight)
-					}
-				case keyboard.I:
-					if state == keyboard.Down {
-						k.gamepad.Press(gamepad.ButtonX)
-					} else {
-						k.gamepad.Release(gamepad.ButtonX)
-					}
-				case keyboard.K:
-					if state == keyboard.Down {
-						k.gamepad.Press(gamepad.ButtonB)
-					} else {
-						k.gamepad.Release(gamepad.ButtonB)
-					}
-				case keyboard.J:
-					if state == keyboard.Down {
-						k.gamepad.Press(gamepad.ButtonY)
-					} else {
-						k.gamepad.Release(gamepad.ButtonY)
-					}
-				case keyboard.L:
-					if state == keyboard.Down {
-						k.gamepad.Press(gamepad.ButtonA)
-					} else {
-						k.gamepad.Release(gamepad.ButtonA)
-					}
-				case keyboard.F:
-					if state == keyboard.Down {
-						k.gamepad.Press(gamepad.ButtonL)
-					} else {
-						k.gamepad.Release(gamepad.ButtonL)
-					}
-				case keyboard.H:
-					if state == keyboard.Down {
-						k.gamepad.Press(gamepad.ButtonR)
-					} else {
-						k.gamepad.Release(gamepad.ButtonR)
-					}
-				case keyboard.E:
-					if state == keyboard.Down {
-						k.gamepad.Press(gamepad.ButtonZL)
-					} else {
-						k.gamepad.Release(gamepad.ButtonZL)
-					}
-				case keyboard.U:
-					if state == keyboard.Down {
-						k.gamepad.Press(gamepad.ButtonZR)
-					} else {
-						k.gamepad.Release(gamepad.ButtonZR)
-					}
-				case keyboard.C:
-					if state == keyboard.Down {
-						k.gamepad.Press(gamepad.ButtonMinus)
-					} else {
-						k.gamepad.Release(gamepad.ButtonMinus)
-					}
-				case keyboard.N:
-					if state == keyboard.Down {
-						k.gamepad.Press(gamepad.ButtonPlus)
-					} else {
-						k.gamepad.Release(gamepad.ButtonPlus)
-					}
-				case keyboard.V:
-					if state == keyboard.Down {
-						k.gamepad.Press(gamepad.ButtonCapture)
-					} else {
-						k.gamepad.Release(gamepad.ButtonCapture)
-					}
-				case keyboard.B:
-					if state == keyboard.Down {
-						k.gamepad.Press(gamepad.ButtonHome)
-					} else {
-						k.gamepad.Release(gamepad.ButtonHome)
-					}
-				case keyboard.Q:
-					if state == keyboard.Down {
-						k.gamepad.Press(gamepad.ButtonStickL)
-					} else {
-						k.gamepad.Release(gamepad.ButtonStickL)
-					}
-				case keyboard.P:
-					if state == keyboard.Down {
-						k.gamepad.Press(gamepad.ButtonStickR)
-					} else {
-						k.gamepad.Release(gamepad.ButtonStickR)
-					}
+		} else if k.mode == ModeSplit {
+			for key, pressed := range k.buttonsState {
+				buttonName, ok := k.gamepadButtonsMap[key]
+				if !ok {
+					log.Fatalf("not found key (%v)", key)
+				}
+				if pressed {
+					k.gamepad.Press(buttonName)
+				} else {
+					k.gamepad.Release(buttonName)
 				}
 			}
 			var lxAxis float64
 			var lyAxis float64
 			var rxAxis float64
 			var ryAxis float64
-			for key, state := k.sticksState {
+			for key, pressed := range k.sticksState {
 				switch key {
-				case keyboard.W:
-					if state == keyboard.Down {
+				case "W":
+					if pressed {
 						lyAxis += -1.0
 					}
-				case keyboard.S:
-					if state == keyboard.Down {
+				case "S":
+					if pressed {
 						lyAxis += 1.0
 					}
-				case keyboard.A:
-					if state == keyboard.Down {
+				case "A":
+					if pressed {
 						lxAxis += -1.0
 					}
-				case keyboard.D:
-					if state == keyboard.Down {
+				case "D":
+					if pressed {
 						lxAxis += 1.0
 					}
-				case keyboard.I:
-					if state == keyboard.Down {
+				case "I":
+					if pressed {
 						ryAxis += -1.0
 					}
-				case keyboard.K:
-					if state == keyboard.Down {
+				case "K":
+					if pressed {
 						ryAxis += 1.0
 					}
-				case keyboard.J:
-					if state == keyboard.Down {
+				case "J":
+					if pressed {
 						rxAxis += -1.0
 					}
-				case keyboard.L:
-					if state == keyboard.Down {
+				case "L":
+					if pressed {
 						rxAxis += 1.0
 					}
 				}
@@ -361,75 +226,117 @@ func (k *keyboardWatcher) watch() {
 	}
 }
 
-func (k *keyboardWatcher) watchLoop() {
-        ticker := time.NewTicker((time.Millisecond * 1000 / 60) + time.Millisecond)
-        defer ticker.Stop()
-        for {
-                select {
-                case <-ticker.C:
-			k.watch()
-                case <-k.stopCh:
-                        return
-                }
-        }
+func (k *KeyboardWatcher) watchLoop() {
+	inputEventCh := k.keyLogger.Read()
+	for event := range inputEventCh {
+		 k.updateState(event)
+	}
 }
 
-
-func (k *keyboardWatcher) Start() {
+func (k *KeyboardWatcher) Start() {
 	go k.watchLoop()
 }
 
-func (k *keyboardWatcher) Start() {
-	close(k.stopCh)
+func (k *KeyboardWatcher) Stop() {
+	k.keyLogger.Close()
 }
 
-func NewKeyboardWatcher(gamepad *gamepad.Gamepad, mode Mode) *KeyboardWatcher {
-	keysState := map[keyboard.Key]keyboard.State{a
-		keyboard.W: keybord.Up, // ButtonUp
-		keyboard.S: keybord.Up, // ButtonDown
-		keyboard.A: keybord.Up, // ButtonLeft
-		keyboard.D: keybord.Up, // ButtonRight
-		keyboard.I: keybord.Up, // ButtonX
-		keyboard.K: keybord.Up, // ButtonB
-		keyboard.J: keybord.Up, // ButtonY
-		keyboard.L: keybord.Up, // ButtonA
-		keyboard.F: keybord.Up, // ButtonL
-		keyboard.H: keybord.Up, // ButtonR
-		keyboard.E: keybord.Up, // ButtonZL
-		keyboard.U: keybord.Up, // ButtonZR
-		keyboard.C: keybord.Up, // ButtonMinus
-		keyboard.N: keybord.Up, // ButtonPlus
-		keyboard.V: keybord.Up, // ButtonCapture
-		keyboard.B: keybord.Up, // ButtonHome
-		keyboard.Q: keybord.Up, // ButtonStickL
-		keyboard.P: keybord.Up, // ButtonStickR
+func NewKeyboardWatcher(gpad *gamepad.Gamepad, keyboardDevice string, mode Mode) (*KeyboardWatcher, error) {
+	gamepadButtonsOrder := []string{
+		 "K", // 0 : B 
+		 "L", // 1 : A
+		 "J", // 2 : Y
+		 "I", // 3 : X
+		 "F", // 4 : L
+		 "H", // 5 : R
+		 "E", // 6 : ZL
+		 "U", // 7 : ZR
+		 "C", // 8 : Minux
+		 "N", // 9 : Plus
+		 "Q", // 10: LStick
+		 "P", // 11: RStick
+		 "W", // 12: Up
+		 "S", // 13: Down
+		 "A", // 14: Left
+		 "D", // 15: Right
+		 "B", // 16: Home
+		 "V", // 17: Capture
 	}
-	sticksState := map[keyboard.Key]keyboard.State{a
-		keyboard.W: keybord.Up, // left stick up
-		keyboard.S: keybord.Up, // left stick down
-		keyboard.A: keybord.Up, // left stick left
-		keyboard.D: keybord.Up, // left stick right
-		keyboard.I: keybord.Up, // right stick up
-		keyboard.K: keybord.Up, // right stick down
-		keyboard.J: keybord.Up, // right stick left
-		keyboard.L: keybord.Up, // right stick right
+	gamepadButtonsMap := map[string]gamepad.ButtonName {
+		"W": gamepad.ButtonUp,
+		"S": gamepad.ButtonDown,
+		"A": gamepad.ButtonLeft,
+		"D": gamepad.ButtonRight,
+		"I": gamepad.ButtonX,
+		"K": gamepad.ButtonB,
+		"J": gamepad.ButtonY,
+		"L": gamepad.ButtonA,
+		"F": gamepad.ButtonL,
+		"H": gamepad.ButtonR,
+		"E": gamepad.ButtonZL,
+		"U": gamepad.ButtonZR,
+		"C": gamepad.ButtonMinus,
+		"N": gamepad.ButtonPlus,
+		"V": gamepad.ButtonCapture,
+		"B": gamepad.ButtonHome,
+		"Q": gamepad.ButtonStickL,
+		"P": gamepad.ButtonStickR,
 	}
-	checkKeys := make([]keyboard.Key, 0)
-	for k, _ := range keyState {
+	buttonsState := map[string]bool{
+		"W": false, // ButtonUp
+		"S": false, // ButtonDown
+		"A": false, // ButtonLeft
+		"D": false, // ButtonRight
+		"I": false, // ButtonX
+		"K": false, // ButtonB
+		"J": false, // ButtonY
+		"L": false, // ButtonA
+		"F": false, // ButtonL
+		"H": false, // ButtonR
+		"E": false, // ButtonZL
+		"U": false, // ButtonZR
+		"C": false, // ButtonMinus
+		"N": false, // ButtonPlus
+		"V": false, // ButtonCapture
+		"B": false, // ButtonHome
+		"Q": false, // ButtonStickL
+		"P": false, // ButtonStickR
+	}
+	sticksState := map[string]bool{
+		"W": false, // left stick up
+		"S": false, // left stick down
+		"A": false, // left stick left
+		"D": false, // left stick right
+		"I": false, // right stick up
+		"K": false, // right stick down
+		"J": false, // right stick left
+		"L": false, // right stick right
+	}
+	checkKeys := make([]string, 0)
+	for k, _ := range buttonsState {
 		checkKeys = append(checkKeys, k)
 	}
-	checkKeys = append(checkKeys, keyboard.LeftShift)
-	return &keyboardWatcher{
-		watcher: keyboard.NewWatcher(),
-		gamepad: gamepad,
+	checkKeys = append(checkKeys, "L_SHIFT")
+	if keyboardDevice == "" {
+		keyboardDevice = keylogger.FindKeyboardDevice()
+	}
+	newKeylogger, err := keylogger.New(keyboardDevice)
+	if err != nil {
+		return nil, fmt.Errorf("can not create key logger: %w", err)
+	}
+	return &KeyboardWatcher{
+		keyLogger: newKeylogger,
+		gamepad: gpad,
 		mode: mode,
-		buttonsState: keysState,
+		gamepadButtonsOrder: gamepadButtonsOrder,
+		gamepadButtonsMap: gamepadButtonsMap,
+		buttonsState: buttonsState,
 		sticksState: sticksState,
-		shiftState: keybord.Up,
-		checkKeys checkKeys,
+		shiftState: false,
+		checkKeys: checkKeys,
 		stickToggle: false,
 		stopCh: make(chan int),
-	}
+	}, nil
 }
 
 

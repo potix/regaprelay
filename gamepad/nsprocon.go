@@ -514,7 +514,7 @@ func (n *NSProCon) buildOutput30() []byte {
 }
 
 func (n *NSProCon) writeControllerReportLoop(f *os.File) {
-	ticker := time.NewTicker((time.Millisecond * 1000 / 60) + time.Millisecond)
+	ticker := time.NewTicker(time.Millisecond * 1000 / 60)
 	defer ticker.Stop()
 	for {
 		select {

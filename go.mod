@@ -10,6 +10,8 @@ require (
 
 require (
 	github.com/BurntSushi/toml v1.1.0 // indirect
+	github.com/MarinX/keylogger v0.0.0-20210528193429-a54d7834cc1a // indirect
+	github.com/azul3d/engine v0.0.0-20211024043305-793ea6c2839d // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/gin-gonic/gin v1.7.7 // indirect
 	github.com/go-playground/locales v0.14.0 // indirect
