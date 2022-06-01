@@ -6,8 +6,7 @@ import(
 	"time"
 	"math"
 	"os"
-	"github.com/potix/regaprelay/backend/setup"
-	"github.com/potix/regaprelay/gamepad"
+	"github.com/potix/regaprelay/gamepad/setup"
 	"github.com/potix/regapweb/handler"
 	"encoding/hex"
 )
@@ -268,9 +267,7 @@ func (n *NSProCon) sendVibrationRequest(bytes []byte) error {
 		StrongMagnitude: hamp,
 		WeakMagnitude:   lamp,
 	}
-	if n.onVibrationCh != nil {
-		n.onVibrationCh <- vibrationMessage
-	}
+	n.SendVibration(vibrationMessage)
 	return nil
 }
 

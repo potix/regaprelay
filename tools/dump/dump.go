@@ -36,7 +36,7 @@ func rwLoop(rf *os.File, wf *os.File, direction string) {
 }
 
 func main() {
-        _, err := gamepad.NewGamepad("nsprocon", "", "")
+        _, err := gamepad.NewGamepad(gamepad.ModelNSProCon, "", "", "")
         if err != nil {
                 log.Fatalf("can not create gamepad: %v", err)
         }

@@ -10,8 +10,7 @@ package gamepad
 import(
         "fmt"
         "log"
-        "time"
-	"github.com/potix/regaprelay/backend/setup"
+	"github.com/potix/regaprelay/gamepad/setup"
 	"github.com/potix/regapweb/handler"
 )
 

@@ -2,8 +2,14 @@ package gamepad
 
 import (
 	"log"
-	"time"
 	"github.com/potix/regapweb/handler"
+)
+
+type GamepadModel string
+
+const (
+        ModelNSProCon GamepadModel = "nsprocon"
+        ModelPS4Con                = "ps4con"
 )
 
 type ButtonName int
@@ -77,7 +83,7 @@ func (b *BaseBackend) StopVibrationListener() {
 	}
 }
 
-func (b *BaseBackend) sendVibration(vibration *handler.GamepadVibrationMessage) {
+func (b *BaseBackend) SendVibration(vibration *handler.GamepadVibrationMessage) {
 	if b.onVibrationCh != nil {
 		b.onVibrationCh <- vibration
 	}

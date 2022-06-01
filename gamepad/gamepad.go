@@ -2,16 +2,7 @@ package gamepad
 
 import (
 	"fmt"
-	"time"
 	"github.com/potix/regapweb/handler"
-	"github.com/potix/regaprelay/backend"
-)
-
-type GamepadModel string
-
-const (
-        ModelNSProCon GamepadModel = "nsprocon"
-        ModelPS4Con                = "ps4con"
 )
 
 type gamepadOptions struct {
@@ -59,10 +50,10 @@ func GamepadUdc(udc string) GamepadOption {
 type Gamepad struct {
 	verbose   bool
 	opts	  *gamepadOptions
-        backendIf backend.BackendIf
+        backendIf BackendIf
 }
 
-func (g *Gamepad) StartVibrationListener(fn backend.OnVibration) {
+func (g *Gamepad) StartVibrationListener(fn OnVibration) {
 	g.backendIf.StartVibrationListener(fn)
 }
 func (g *Gamepad) StopVibrationListener() {
@@ -106,14 +97,14 @@ func NewGamepad(model GamepadModel, macAddr string, spiMemory60 string, spiMemor
                 opt(baseOpts)
         }
 	var err error
-	var newBackendIf backend.BackendIf
+	var newBackendIf BackendIf
 	if model == ModelNSProCon {
-		newBackendIf, err = backend.NewNSProCon(baseOpts.verbose, macAddr, spiMemory60, spiMemory80, baseOpts.devFilePath, baseOpts.configsHome, baseOpts.udc)
+		newBackendIf, err = NewNSProCon(baseOpts.verbose, macAddr, spiMemory60, spiMemory80, baseOpts.devFilePath, baseOpts.configsHome, baseOpts.udc)
 		if err != nil {
 			return nil, fmt.Errorf("can not create procon: %v", err)
 		}
 	} else if model == ModelPS4Con {
-		newBackendIf = backend.NewPS4Con(baseOpts.verbose, baseOpts.devFilePath, baseOpts.configsHome, baseOpts.udc)
+		newBackendIf = NewPS4Con(baseOpts.verbose, baseOpts.devFilePath, baseOpts.configsHome, baseOpts.udc)
 	}
 	if newBackendIf == nil {
 		return nil, fmt.Errorf("unsupported model: %v", model)
