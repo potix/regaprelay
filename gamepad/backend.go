@@ -1,10 +1,37 @@
-package backend
+package gamepad
 
 import (
 	"log"
 	"time"
 	"github.com/potix/regapweb/handler"
-	"github.com/potix/regaprelay/gamepad"
+)
+
+type ButtonName int
+
+const (
+        ButtonA ButtonName = iota
+        ButtonB
+        ButtonX
+        ButtonY
+        ButtonLeft
+        ButtonRight
+        ButtonUp
+        ButtonDown
+        ButtonPlus
+        ButtonMinus
+        ButtonHome
+        ButtonCapture
+        ButtonStickL
+        ButtonStickR
+        ButtonL
+        ButtonR
+        ButtonZL
+        ButtonZR
+        ButtonLeftSL
+        ButtonLeftSR
+        ButtonRightSL
+        ButtonRightSR
+        ButtonChargingGrip
 )
 
 type OnVibration func(*handler.GamepadVibrationMessage)
@@ -14,8 +41,8 @@ type BackendIf interface {
 	Start() error
 	Stop()
 	UpdateState(*handler.GamepadStateMessage) error
-	Press([]gamepad.ButtonName) error
-        Release([]gamepad.ButtonName) error
+	Press([]ButtonName) error
+        Release([]ButtonName) error
         StickL(float64, float64) error
 	StickR(float64, float64) error
 	StartVibrationListener(fn OnVibration)

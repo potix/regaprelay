@@ -1,4 +1,4 @@
-package backend
+package gamepad
 
 //
 // XXX TODO
@@ -50,12 +50,12 @@ func (p *PS4Con) UpdateState(state *handler.GamepadStateMessage) error {
         return nil
 }
 
-func (p *PS4Con) Press(buttons []gamepad.ButtonName) error {
+func (p *PS4Con) Press(buttons []ButtonName) error {
 	// XXX TODO
         return nil
 }
 
-func (p *PS4Con) Release(buttons []gamepad.ButtonName) error {
+func (p *PS4Con) Release(buttons []ButtonName) error {
 	// XXX TODO
         return nil
 }

@@ -14,34 +14,6 @@ const (
         ModelPS4Con                = "ps4con"
 )
 
-type ButtonName int
-
-const (
-        ButtonA ButtonName = iota
-        ButtonB
-        ButtonX
-        ButtonY
-        ButtonLeft
-        ButtonRight
-        ButtonUp
-        ButtonDown
-        ButtonPlus
-        ButtonMinus
-        ButtonHome
-        ButtonCapture
-        ButtonStickL
-        ButtonStickR
-        ButtonL
-        ButtonR
-        ButtonZL
-        ButtonZR
-        ButtonLeftSL
-        ButtonLeftSR
-        ButtonRightSL
-        ButtonRightSR
-        ButtonChargingGrip
-)
-
 type gamepadOptions struct {
         verbose     bool
 	devFilePath string

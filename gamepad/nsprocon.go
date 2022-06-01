@@ -1,4 +1,4 @@
-package backend
+package gamepad
 
 import(
 	"fmt"
@@ -588,12 +588,12 @@ func (n *NSProCon) UpdateState(state *handler.GamepadStateMessage) error {
 	return nil
 }
 
-func (n *NSProCon) Press(buttons []gamepad.ButtonName) error {
+func (n *NSProCon) Press(buttons []ButtonName) error {
 	// XXX TODO
 	return nil
 }
 
-func (n *NSProCon) Release(buttons []gamepad.ButtonName) error {
+func (n *NSProCon) Release(buttons []ButtonName) error {
 	// XXX TODO
 	return nil
 }
