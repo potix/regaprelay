@@ -50,42 +50,22 @@ func (p *PS4Con) UpdateState(state *handler.GamepadStateMessage) error {
         return nil
 }
 
-func (p *PS4Con) Press(buttons []ButtonName) error {
+func (p *PS4Con) Press(buttons []gamepad.ButtonName) error {
 	// XXX TODO
         return nil
 }
 
-func (p *PS4Con) Release(buttons []ButtonName) error {
+func (p *PS4Con) Release(buttons []gamepad.ButtonName) error {
 	// XXX TODO
         return nil
 }
 
-func (p *PS4Con) Push(buttons []ButtonName, duration time.Duration) error {
+func (p *PS4Con) StickL(xAxis float64, yAxis float64) error {
 	// XXX TODO
         return nil
 }
 
-func (p *PS4Con) Repeat(buttons []ButtonName, interval time.Duration, duration time.Duration) error {
-	// XXX TODO
-        return nil
-}
-
-func (p *PS4Con) StickL(xDir XDirection, xPower float64, yDir YDirection, yPower float64, duration time.Duration) error {
-	// XXX TODO
-        return nil
-}
-
-func (p *PS4Con) StickR(xDir XDirection, xPower float64, yDir YDirection, yPower float64, duration time.Duration) error {
-	// XXX TODO
-        return nil
-}
-
-func (p *PS4Con) RotationStickL(xDir XDirection, lapTime time.Duration, power float64, duration time.Duration) error {
-	// XXX TODO
-        return nil
-}
-
-func (p *PS4Con) RotationStickR(xDir XDirection, lapTime time.Duration, power float64, duration time.Duration) error {
+func (p *PS4Con) StickR(xAxis float64, yAxis float64) error {
 	// XXX TODO
         return nil
 }

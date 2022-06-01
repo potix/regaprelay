@@ -4,50 +4,7 @@ import (
 	"log"
 	"time"
 	"github.com/potix/regapweb/handler"
-)
-
-type ButtonName int
-
-const (
-	ButtonA ButtonName = iota
-	ButtonB
-	ButtonX
-	ButtonY
-	ButtonLeft
-	ButtonRight
-	ButtonUp
-	ButtonDown
-	ButtonPlus
-	ButtonMinus
-	ButtonHome
-	ButtonCapture
-	ButtonStickL
-	ButtonStickR
-	ButtonL
-	ButtonR
-	ButtonZL
-	ButtonZR
-	ButtonLeftSL
-	ButtonLeftSR
-	ButtonRightSL
-	ButtonRightSR
-	ButtonChargingGrip
-)
-
-type XDirection int
-
-const (
-	XDirectionNeutral XDirection = iota
-	XDirectionLeft
-	XDirectionRgiht
-)
-
-type YDirection int
-
-const (
-	YDirectionNeutral YDirection = iota
-	YDirectionUP
-	YDirectionDown
+	"github.com/potix/regaprelay/gamepad"
 )
 
 type OnVibration func(*handler.GamepadVibrationMessage)
@@ -57,14 +14,10 @@ type BackendIf interface {
 	Start() error
 	Stop()
 	UpdateState(*handler.GamepadStateMessage) error
-	Press([]ButtonName) error
-        Release([]ButtonName) error
-        Push([]ButtonName, time.Duration) error
-	Repeat([]ButtonName, time.Duration, time.Duration) error
-        StickL(XDirection, float64, YDirection, float64, time.Duration) error
-	StickR(XDirection, float64, YDirection, float64, time.Duration) error
-	RotationStickL(XDirection, time.Duration, float64, time.Duration) error
-        RotationStickR(XDirection, time.Duration, float64, time.Duration) error
+	Press([]gamepad.ButtonName) error
+        Release([]gamepad.ButtonName) error
+        StickL(float64, float64) error
+	StickR(float64, float64) error
 	StartVibrationListener(fn OnVibration)
 	StopVibrationListener()
 }

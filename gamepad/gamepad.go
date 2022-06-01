@@ -14,6 +14,34 @@ const (
         ModelPS4Con                = "ps4con"
 )
 
+type ButtonName int
+
+const (
+        ButtonA ButtonName = iota
+        ButtonB
+        ButtonX
+        ButtonY
+        ButtonLeft
+        ButtonRight
+        ButtonUp
+        ButtonDown
+        ButtonPlus
+        ButtonMinus
+        ButtonHome
+        ButtonCapture
+        ButtonStickL
+        ButtonStickR
+        ButtonL
+        ButtonR
+        ButtonZL
+        ButtonZR
+        ButtonLeftSL
+        ButtonLeftSR
+        ButtonRightSL
+        ButtonRightSR
+        ButtonChargingGrip
+)
+
 type gamepadOptions struct {
         verbose     bool
 	devFilePath string
@@ -73,36 +101,20 @@ func (g *Gamepad) UpdateState(state *handler.GamepadStateMessage) error {
 	return g.backendIf.UpdateState(state)
 }
 
-func (g *Gamepad) Press(buttons ...backend.ButtonName) error {
+func (g *Gamepad) Press(buttons ...ButtonName) error {
 	return g.backendIf.Press(buttons)
 }
 
-func (g *Gamepad) Release(buttons ...backend.ButtonName) error {
+func (g *Gamepad) Release(buttons ...ButtonName) error {
 	return g.backendIf.Release(buttons)
 }
 
-func (g *Gamepad) Push(duration time.Duration, buttons ...backend.ButtonName) error {
-	return g.backendIf.Push(buttons, duration)
+func (g *Gamepad) StickL(xAxis float64, yAxis float64) error {
+	return g.backendIf.StickL(xAxis, yAxis)
 }
 
-func (g *Gamepad) Repeat(interval time.Duration, duration time.Duration, buttons ...backend.ButtonName,) error {
-	return g.backendIf.Repeat(buttons, interval, duration)
-}
-
-func (g *Gamepad) StickL(xDir backend.XDirection, xPower float64, yDir backend.YDirection, yPower float64, duration time.Duration) error {
-	return g.backendIf.StickL(xDir, xPower, yDir, yPower, duration)
-}
-
-func (g *Gamepad) StickR(xDir backend.XDirection, xPower float64, yDir backend.YDirection, yPower float64, duration time.Duration) error {
-	return g.backendIf.StickR(xDir, xPower, yDir, yPower, duration)
-}
-
-func (g *Gamepad) RotationStickL(xDir backend.XDirection, lapTime time.Duration, power float64, duration time.Duration) error {
-	return g.backendIf.RotationStickL(xDir, lapTime, power, duration)
-}
-
-func (g *Gamepad) RotationStickR(xDir backend.XDirection, lapTime time.Duration, power float64, duration time.Duration) error {
-	return g.backendIf.RotationStickR(xDir, lapTime, power, duration)
+func (g *Gamepad) StickR(xAxis float64, yAxis float64) error {
+	return g.backendIf.StickR(xAxis, yAxis)
 }
 
 func (g *Gamepad) Start() error {

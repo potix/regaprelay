@@ -7,6 +7,7 @@ import(
 	"math"
 	"os"
 	"github.com/potix/regaprelay/backend/setup"
+	"github.com/potix/regaprelay/gamepad"
 	"github.com/potix/regapweb/handler"
 	"encoding/hex"
 )
@@ -587,42 +588,22 @@ func (n *NSProCon) UpdateState(state *handler.GamepadStateMessage) error {
 	return nil
 }
 
-func (n *NSProCon) Press(buttons []ButtonName) error {
+func (n *NSProCon) Press(buttons []gamepad.ButtonName) error {
 	// XXX TODO
 	return nil
 }
 
-func (n *NSProCon) Release(buttons []ButtonName) error {
+func (n *NSProCon) Release(buttons []gamepad.ButtonName) error {
 	// XXX TODO
 	return nil
 }
 
-func (n *NSProCon) Push(buttons []ButtonName, duration time.Duration) error {
+func (n *NSProCon) StickL(xAxis float64, yAxis float64) error {
 	// XXX TODO
 	return nil
 }
 
-func (n *NSProCon) Repeat(buttons []ButtonName, interval time.Duration, duration time.Duration) error {
-	// XXX TODO
-	return nil
-}
-
-func (n *NSProCon) StickL(xDir XDirection, xPower float64, yDir YDirection, yPower float64, duration time.Duration) error {
-	// XXX TODO
-	return nil
-}
-
-func (n *NSProCon) StickR(xDir XDirection, xPower float64, yDir YDirection, yPower float64, duration time.Duration) error {
-	// XXX TODO
-	return nil
-}
-
-func (n *NSProCon) RotationStickL(xDir XDirection, lapTime time.Duration, power float64, duration time.Duration) error {
-	// XXX TODO
-	return nil
-}
-
-func (n *NSProCon) RotationStickR(xDir XDirection, lapTime time.Duration, power float64, duration time.Duration) error {
+func (n *NSProCon) StickR(xAxis float64, yAxis float64) error {
 	// XXX TODO
 	return nil
 }
