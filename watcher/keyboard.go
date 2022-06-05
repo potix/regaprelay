@@ -54,11 +54,10 @@ func (k *KeyboardWatcher) updateState(event keylogger.InputEvent) {
 	switch event.Type {
 	case keylogger.EvKey:
 		key := event.KeyString()
-		if (k.verbose) {
-			log.Printf("input key = %v", key)
-		}
 		if event.KeyPress() {
-			log.Printf("[event] press key %v", key)
+			if k.verbose {
+				log.Printf("[event] press key %v", key)
+			}
 			if key == "L_SHIFT" {
 				// シフトが押された
 				k.shiftState = true
