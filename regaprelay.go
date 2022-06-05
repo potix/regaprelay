@@ -29,6 +29,7 @@ type regaprelayGamepadConfig struct {
 }
 
 type regaprelayWatcherConfig struct {
+	Enable         bool   `toml:enable`
 	KeyboardDevice string `toml:keyboardDevice`
 }
 
@@ -100,11 +101,14 @@ func main() {
 	if err != nil {
 		log.Fatalf("can not create tcp client: %v", err)
 	}
-	// setup watcher
-        kwVerboseOpt := watcher.KeyboardWatcherVerbose(conf.Verbose)
-	newKeyboardWatcher, err := watcher.NewKeyboardWatcher(newGamepad, conf.Watcher.KeyboardDevice, watcher.ModeBulk, kwVerboseOpt)
-	if err != nil {
-		 log.Fatalf("can not create keyboard watcher: %v", err)
+	var newKeyboardWatcher *watcher.KeyboardWatcher
+	if conf.Watcher.Enable {
+		// setup watcher
+		kwVerboseOpt := watcher.KeyboardWatcherVerbose(conf.Verbose)
+		newKeyboardWatcher, err = watcher.NewKeyboardWatcher(newGamepad, conf.Watcher.KeyboardDevice, watcher.ModeBulk, kwVerboseOpt)
+		if err != nil {
+			 log.Fatalf("can not create keyboard watcher: %v", err)
+		}
 	}
 	err = newGamepad.Start()
 	if err != nil {
@@ -114,9 +118,13 @@ func main() {
 	if err != nil {
 		log.Fatalf("can not start tcp client: %v", err)
 	}
-	newKeyboardWatcher.Start()
+	if newKeyboardWatcher != nil {
+		newKeyboardWatcher.Start()
+	}
         signal.SignalWait(nil)
-	newKeyboardWatcher.Stop()
+	if newKeyboardWatcher != nil {
+		newKeyboardWatcher.Stop()
+	}
         newTcpClient.Stop()
         newGamepad.Stop()
 }
