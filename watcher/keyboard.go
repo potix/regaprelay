@@ -80,7 +80,9 @@ func (k *KeyboardWatcher) updateState(event keylogger.InputEvent) {
 				changed = true
 			}
 		} else if event.KeyRelease() {
-			log.Printf("[event] release key %v", key)
+			if k.verbose {
+				log.Printf("[event] release key %v", key)
+			}
 			if key == "L_SHIFT" {
 				// シフトが離された
 				k.shiftState = false
