@@ -57,6 +57,7 @@ const (
 	subCommandRequestDeviceInfo             = 0x02
 	subCommandSetInputReportMode            = 0x03
 	subCommandTriggerButtonsElapsedTime     = 0x04
+	subCommandSetHciState                   = 0x06
 	subCommandSetShipmentLowPowerState      = 0x08
 	subCommandReadSpi                       = 0x10
 	subCommandSetNfcIrMcuConfiguration      = 0x21
@@ -306,7 +307,7 @@ func (n *NSProCon) buildAck(subCmd byte, existsReportData bool) byte {
 }
 
 func (n *NSProCon) readReportLoop(f * os.File) {
-	// reset magic 
+	// usb reset magic 
 	n.writeReport(f, usbReportIdOutput81, []byte{ 0x01, 0x00, 0x03 })
 	buf := make([]byte, 64)
 	for {
@@ -407,10 +408,19 @@ func (n *NSProCon) readReportLoop(f * os.File) {
 					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %v", 0x83 /* from dump */, subCommandTriggerButtonsElapsedTime, err)
 					return
 				}
-
+			case subCommandSetHciState:
+				// buf[11] = 0x00 Disconnect 
+				ack := n.buildAck(subCommandSetHciState, false)
+				err = n.writeReport(f, reportIdOutput21, n.buildOutput21(n.buildControllerReport(), ack, subCommandSetHciState))
+				if err != nil {
+					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %v", ack, subCommandSetHciState, err)
+					return
+				}
+				// usb disconnect magic
+				// n.writeReport(f, usbReportIdOutput81, []byte{ 0x01, 0x03 })
 			case subCommandSetShipmentLowPowerState:
 				// buf[11] nothig to do
-				ack := n.buildAck(subCommandSetInputReportMode, false)
+				ack := n.buildAck(subCommandSetShipmentLowPowerState, false)
 				err = n.writeReport(f, reportIdOutput21, n.buildOutput21(n.buildControllerReport(), ack, subCommandSetShipmentLowPowerState))
 				if err != nil {
 					log.Printf("can not write reponse report (21:%x:%x) to gadget device file: %v", ack, subCommandSetShipmentLowPowerState, err)
