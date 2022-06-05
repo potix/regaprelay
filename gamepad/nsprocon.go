@@ -225,37 +225,53 @@ func (n *NSProCon) writeReport(f *os.File, reportId byte, reportBytes []byte) (e
 	return nil
 }
 
+
+
+
 func (n *NSProCon) sendVibrationRequest(bytes []byte) error {
 	if len(bytes) < 8 {
 		return fmt.Errorf("invalid vibration data (%x)", bytes)
 	}
-	if bytes[0] == 0 && bytes[1] == 0 && bytes[2] == 0 && bytes[3] == 0 &&
-	   bytes[4] == 0 && bytes[5] == 0 && bytes[6] == 0 && bytes[7] == 0 {
-		return nil
+	lhamp := 0
+	llamp := 0
+	rhamp := 0
+	rlamp := 0
+	leftSkip := true
+	rightSkip := true
+	ok := false
+	if bytes[0] == 0 && bytes[1] == 0 && bytes[2] == 0 && bytes[3] == 0 {
+		leftSkip = true
 	}
-	//var lhf uint16 = uint16(bytes[1]&0x01)<<8 | uint16(bytes[0])
-	var lhfAmp uint8 = uint8(bytes[1] & 0xfe)
-	//var llf uint8 = uint8(bytes[2] & 0x7f)
-	var llfAmp uint16 = uint16(bytes[2]&0x80)<<8 | uint16(bytes[3])
-	//var rhf uint16 = uint16(bytes[5]&0x01)<<8 | uint16(bytes[4])
-	var rhfAmp uint8 = uint8(bytes[5] & 0xfe)
-	//var rlf uint8 = uint8(bytes[6] & 0x7f)
-	var rlfAmp uint16 = uint16(bytes[6]&0x80)<<8 | uint16(bytes[7])
-	lhamp, ok := vibrationAmpHfaMap[lhfAmp]
-	if !ok {
-		return fmt.Errorf("ont found left hight amplitude (%v)", lhfAmp)
+	if bytes[4] == 0 && bytes[5] == 0 && bytes[6] == 0 && bytes[7] == 0 {
+		rightSkip = true
 	}
-	llamp, ok := vibrationAmpLfaMap[llfAmp]
-	if !ok {
-		return fmt.Errorf("not found left low amplitude (%v)", llfAmp)
+	if !leftSkip {
+		//var lhf uint16 = uint16(bytes[1]&0x01)<<8 | uint16(bytes[0])
+		var lhfAmp uint8 = uint8(bytes[1] & 0xfe)
+		//var llf uint8 = uint8(bytes[2] & 0x7f)
+		var llfAmp uint16 = uint16(bytes[2]&0x80)<<8 | uint16(bytes[3])
+		lhamp, ok = vibrationAmpHfaMap[lhfAmp]
+		if !ok {
+			return fmt.Errorf("ont found left hight amplitude (%v): %+v", lhfAmp, bytes)
+		}
+		llamp, ok = vibrationAmpLfaMap[llfAmp]
+		if !ok {
+			return fmt.Errorf("not found left low amplitude (%v): %+v", llfAmp, bytes)
+		}
 	}
-	rhamp, ok := vibrationAmpHfaMap[rhfAmp]
-	if !ok {
-		return fmt.Errorf("not found right high amplitude (%v)", rhfAmp)
-	}
-	rlamp, ok := vibrationAmpLfaMap[rlfAmp]
-	if !ok {
-		return fmt.Errorf("not found right low amplitude (%v)", rlfAmp)
+	if !rightSkip {
+		//var rhf uint16 = uint16(bytes[5]&0x01)<<8 | uint16(bytes[4])
+		var rhfAmp uint8 = uint8(bytes[5] & 0xfe)
+		//var rlf uint8 = uint8(bytes[6] & 0x7f)
+		var rlfAmp uint16 = uint16(bytes[6]&0x80)<<8 | uint16(bytes[7])
+		rhamp, ok = vibrationAmpHfaMap[rhfAmp]
+		if !ok {
+			return fmt.Errorf("not found right high amplitude (%v): %+v", rhfAmp, bytes)
+		}
+		rlamp, ok = vibrationAmpLfaMap[rlfAmp]
+		if !ok {
+			return fmt.Errorf("not found right low amplitude (%v): %+v", rlfAmp, bytes)
+		}
 	}
 	if lhamp == 0 && llamp == 0 && rhamp == 0 && rlamp == 0 {
 		return nil
@@ -290,8 +306,7 @@ func (n *NSProCon) buildAck(subCmd byte, existsReportData bool) byte {
 }
 
 func (n *NSProCon) readReportLoop(f * os.File) {
-	// XXXX why magic 
-	n.writeReport(f, usbReportIdOutput81, []byte{ 0x03 })
+	// reset magic 
 	n.writeReport(f, usbReportIdOutput81, []byte{ 0x01, 0x00, 0x03 })
 	buf := make([]byte, 64)
 	for {

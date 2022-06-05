@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"log"
+	"fmt"
 	"syscall"
 	"github.com/potix/utils/signal"
 	"github.com/potix/regaprelay/gamepad"
@@ -32,6 +33,7 @@ func rwLoop(rf *os.File, wf *os.File, direction string) {
 			break
 		}
 		log.Printf("%v: %x", direction, buf[:rl])
+		fmt.Printf("%v: %x", direction, buf[:rl])
 	}
 }
 
