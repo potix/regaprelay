@@ -15,7 +15,26 @@ const (
 	ModeBulk       = "Bulk"
 )
 
+type keyboardWatcherOptions struct {
+        verbose    bool
+}
+
+func defaultKeyboardWatcherOptions() *keyboardWatcherOptions {
+        return &keyboardWatcherOptions {
+                verbose: false,
+        }
+}
+
+type KeyboardWatcherOption func(*keyboardWatcherOptions)
+
+func KeyboardWatcherVerbose(verbose bool) KeyboardWatcherOption {
+        return func(opts *keyboardWatcherOptions) {
+                opts.verbose = verbose
+        }
+}
+
 type KeyboardWatcher struct {
+	verbose	            bool
 	keyLogger           *keylogger.KeyLogger
 	gamepad             *gamepad.Gamepad
 	mode                Mode
@@ -35,6 +54,9 @@ func (k *KeyboardWatcher) updateState(event keylogger.InputEvent) {
 	switch event.Type {
 	case keylogger.EvKey:
 		key := event.KeyString()
+		if (k.verbose) {
+			log.Printf("input key = %v", key)
+		}
 		if event.KeyPress() {
 			log.Printf("[event] press key %v", key)
 			if key == "L_SHIFT" {
@@ -239,7 +261,14 @@ func (k *KeyboardWatcher) Stop() {
 	k.keyLogger.Close()
 }
 
-func NewKeyboardWatcher(gpad *gamepad.Gamepad, keyboardDevice string, mode Mode) (*KeyboardWatcher, error) {
+func NewKeyboardWatcher(gpad *gamepad.Gamepad, keyboardDevice string, mode Mode, opts ...KeyboardWatcherOption) (*KeyboardWatcher, error) {
+        baseOpts := defaultKeyboardWatcherOptions()
+        for _, opt := range opts {
+                if opt == nil {
+                        continue
+                }
+                opt(baseOpts)
+        }
 	gamepadButtonsOrder := []string{
 		 "K", // 0 : B 
 		 "L", // 1 : A
@@ -323,6 +352,7 @@ func NewKeyboardWatcher(gpad *gamepad.Gamepad, keyboardDevice string, mode Mode)
 		return nil, fmt.Errorf("can not create key logger: %w", err)
 	}
 	return &KeyboardWatcher{
+		verbose: baseOpts.verbose,
 		keyLogger: newKeylogger,
 		gamepad: gpad,
 		mode: mode,

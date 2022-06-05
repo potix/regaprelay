@@ -290,6 +290,9 @@ func (n *NSProCon) buildAck(subCmd byte, existsReportData bool) byte {
 }
 
 func (n *NSProCon) readReportLoop(f * os.File) {
+	// XXXX why magic 
+	n.writeReport(f, usbReportIdOutput81, []byte{ 0x03 })
+	n.writeReport(f, usbReportIdOutput81, []byte{ 0x01, 0x00, 0x03 })
 	buf := make([]byte, 64)
 	for {
 		select {
@@ -338,6 +341,7 @@ func (n *NSProCon) readReportLoop(f * os.File) {
 			case subTypeDisableUsbTimeout:
 				n.usbTimeout = false
 				n.comState = comStateDisableUsbTimeout
+				log.Printf("diable usb timeout")
 			case subTypeEnableUsbTimeout:
 				n.usbTimeout = true
 				n.comState = comStateEnableUsbTimeout

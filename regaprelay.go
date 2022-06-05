@@ -7,6 +7,7 @@ import (
         "github.com/potix/utils/configurator"
         "github.com/potix/regaprelay/gamepad"
         "github.com/potix/regaprelay/client"
+        "github.com/potix/regaprelay/watcher"
         "log"
         "log/syslog"
 )
@@ -27,6 +28,10 @@ type regaprelayGamepadConfig struct {
 	Udc         string               `toml:udc`
 }
 
+type regaprelayWatcherConfig struct {
+	KeyboardDevice string `toml:keyboardDevice`
+}
+
 type regaprelayLogConfig struct {
         UseSyslog bool `toml:"useSyslog"`
 }
@@ -35,6 +40,7 @@ type regaprelayConfig struct {
         Verbose   bool                       `toml:"verbose"`
         TcpClient *regaprelayTcpClientConfig `toml:"tcpClient"`
         Gamepad   *regaprelayGamepadConfig   `toml:"gamepad"`
+        Watcher   *regaprelayWatcherConfig   `toml:"watcher"`
         Log       *regaprelayLogConfig       `toml:"log"`
 }
 
@@ -94,6 +100,12 @@ func main() {
 	if err != nil {
 		log.Fatalf("can not create tcp client: %v", err)
 	}
+	// setup watcher
+        kwVerboseOpt := watcher.KeyboardWatcherVerbose(conf.Verbose)
+	newKeyboardWatcher, err := watcher.NewKeyboardWatcher(newGamepad, conf.Watcher.KeyboardDevice, watcher.ModeBulk, kwVerboseOpt)
+	if err != nil {
+		 log.Fatalf("can not create keyboard watcher: %v", err)
+	}
 	err = newGamepad.Start()
 	if err != nil {
 		log.Fatalf("can not start gamepad: %v", err)
@@ -102,7 +114,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("can not start tcp client: %v", err)
 	}
+	newKeyboardWatcher.Start()
         signal.SignalWait(nil)
+	newKeyboardWatcher.Stop()
         newTcpClient.Stop()
         newGamepad.Stop()
 }

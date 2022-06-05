@@ -7,7 +7,7 @@ import (
         "github.com/potix/utils/signal"
         "github.com/potix/utils/configurator"
         "github.com/potix/regaprelay/gamepad"
-        "github.com/potix/regaprelay/tools/gpadtest/watcher"
+        "github.com/potix/regaprelay/watcher"
         "log"
 )
 
