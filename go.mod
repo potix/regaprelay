@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/MarinX/keylogger v0.0.0-20210528193429-a54d7834cc1a
-	github.com/potix/regapweb v0.0.0-20220617151938-12024004e8bc
+	github.com/potix/regapweb v0.0.0-20220617153457-c90f8cd0b2cf
 	github.com/potix/utils/configurator v0.0.0-20220528212729-ab4073917878
 	github.com/potix/utils/signal v0.0.0-20220528212729-ab4073917878
 )
