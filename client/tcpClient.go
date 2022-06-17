@@ -300,6 +300,7 @@ func (t *TcpClient) reconnectLoop() {
 		t.conn = nil
 		conn.Close()
 		t.connMutex.Unlock()
+		time.Sleep(500 * time.Millisecond)
 	}
 	if t.verbose {
 		log.Printf("finish reconnect loop")
