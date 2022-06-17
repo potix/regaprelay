@@ -54,6 +54,7 @@ type BackendIf interface {
 }
 
 type BaseBackend struct {
+	verbose			bool
 	onVibrationCh           chan *message.GamepadVibration
 	stopVibrationListenerCh chan int
 }
@@ -62,7 +63,9 @@ func (b *BaseBackend) StartVibrationListener(fn OnVibration) {
 	b.onVibrationCh = make(chan *message.GamepadVibration)
 	b.stopVibrationListenerCh = make(chan int)
         go func() {
-                log.Printf("start vibration listener")
+		if b.verbose {
+			log.Printf("start vibration listener")
+		}
                 for {
                         select {
                         case v := <-b.onVibrationCh:
@@ -71,7 +74,9 @@ func (b *BaseBackend) StartVibrationListener(fn OnVibration) {
                                 return
                         }
                 }
-                log.Printf("finish vibration listener")
+		if b.verbose {
+			log.Printf("finish vibration listener")
+		}
         }()
 }
 

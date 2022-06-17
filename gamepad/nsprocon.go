@@ -917,7 +917,9 @@ func NewNSProCon(verbose bool, macAddr string, spiMemory60 string, spiMemory80 s
 		reverseMacAddr[len(decodedMacAddr) - 1 - i] = b
 	}
 	return &NSProCon{
-		BaseBackend: &BaseBackend{},
+		BaseBackend: &BaseBackend{
+			verbose: verbose,
+		},
 		verbose: verbose,
 		setupParams: setupParams,
 		macAddr: decodedMacAddr,

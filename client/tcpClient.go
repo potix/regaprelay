@@ -267,14 +267,21 @@ func (t *TcpClient) communicationLoop(conn net.Conn) error {
 }
 
 func (t *TcpClient) reconnectLoop() {
-	log.Printf("start reconnect loop")
+	if t.verbose {
+		log.Printf("start reconnect loop")
+	}
 	for {
 		select {
 		case <-t.stopCh:
-			log.Printf("stop reconnect loop")
+			if t.verbose {
+				log.Printf("stop reconnect loop")
+			}
+			break
 		default:
 		}
-		log.Printf("connect to server %v", t.serverHostPort)
+		if t.verbose {
+			log.Printf("connect to server %v", t.serverHostPort)
+		}
 		conn, err := tls.Dial("tcp", t.serverHostPort, t.tlsConfig)
 		if err != nil {
 			log.Printf("can not connect to tcp server: %v", err)
@@ -293,6 +300,9 @@ func (t *TcpClient) reconnectLoop() {
 		t.conn = nil
 		conn.Close()
 		t.connMutex.Unlock()
+	}
+	if t.verbose {
+		log.Printf("finish reconnect loop")
 	}
 }
 

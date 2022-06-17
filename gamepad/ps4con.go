@@ -103,9 +103,11 @@ func NewPS4Con(verbose bool, devFilePath string, configsHome string, udc string)
 		devFilePath = defaultDevFilePath
 	}
 	return &PS4Con{
-		BaseBackend: &BaseBackend{},
-		setupParams: setupParams,
+		BaseBackend: &BaseBackend{
+			verbose: verbose,
+		},
 		verbose: verbose,
+		setupParams: setupParams,
 		devFilePath: devFilePath,
 	}
 }
