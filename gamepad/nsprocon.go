@@ -237,8 +237,8 @@ func (n *NSProCon) sendVibrationRequest(bytes []byte) error {
 	llamp := 0
 	rhamp := 0
 	rlamp := 0
-	leftSkip := true
-	rightSkip := true
+	leftSkip := false
+	rightSkip := false
 	ok := false
 	if bytes[0] == 0 && bytes[1] == 0 && bytes[2] == 0 && bytes[3] == 0 {
 		leftSkip = true

@@ -308,7 +308,7 @@ func (t *TcpClient) reconnectLoop() {
 }
 
 func (t *TcpClient) onVibration(vibration *message.GamepadVibration) {
-	if t.delivererId== "" || t.controllerId == "" || t.gamepadId == "" {
+	if t.delivererId == "" || t.controllerId == "" || t.gamepadId == "" {
 		if t.verbose {
 			log.Printf("skip vibration because no ids")
 		}
