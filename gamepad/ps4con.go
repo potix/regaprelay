@@ -11,7 +11,7 @@ import(
         "fmt"
         "log"
 	"github.com/potix/regaprelay/gamepad/setup"
-	"github.com/potix/regapweb/handler"
+	"github.com/potix/regapweb/message"
 )
 
 type PS4Con struct  {
@@ -44,7 +44,7 @@ func (p *PS4Con) Stop() {
         }
 }
 
-func (p *PS4Con) UpdateState(state *handler.GamepadStateMessage) error {
+func (p *PS4Con) UpdateState(state *message.GamepadState) error {
 	// XXX TODO
         return nil
 }

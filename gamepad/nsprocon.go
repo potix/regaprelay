@@ -7,7 +7,7 @@ import(
 	"math"
 	"os"
 	"github.com/potix/regaprelay/gamepad/setup"
-	"github.com/potix/regapweb/handler"
+	"github.com/potix/regapweb/message"
 	"encoding/hex"
 )
 
@@ -288,7 +288,7 @@ func (n *NSProCon) sendVibrationRequest(bytes []byte) error {
 	if lamp > 1 {
 		lamp = 1.0
 	}
-	vibrationMessage := &handler.GamepadVibrationMessage {
+	vibrationMessage := &message.GamepadVibration {
 		Duration:        1000,
 		StartDelay:      0,
 		StrongMagnitude: hamp,
@@ -679,7 +679,7 @@ func (n *NSProCon) boolToByte(v bool) byte {
 	}
 }
 
-func (n *NSProCon) UpdateState(state *handler.GamepadStateMessage) error {
+func (n *NSProCon) UpdateState(state *message.GamepadState) error {
 	for i, button := range state.Buttons {
 		switch i {
 		case 0:

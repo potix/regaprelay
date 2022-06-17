@@ -14,6 +14,7 @@ import (
 
 type regaprelayTcpClientConfig struct {
         ServerHostPort string `toml:"serverHostPort"`
+	Name           string `toml:"name`
 	Secret         string `toml:"secret`
 	SkipVerify     bool   `toml:"skipVerify`
 }
@@ -97,7 +98,7 @@ func main() {
 	// setup tcp client
         tcVerboseOpt := client.TcpClientVerbose(conf.Verbose)
 	tcSkipVerify := client.TcpClientSkipVerify(conf.TcpClient.SkipVerify)
-        newTcpClient, err := client.NewTcpClient(conf.TcpClient.ServerHostPort, conf.TcpClient.Secret, newGamepad, tcSkipVerify, tcVerboseOpt)
+        newTcpClient, err := client.NewTcpClient(conf.TcpClient.ServerHostPort, conf.TcpClient.Name, conf.TcpClient.Secret, newGamepad, tcSkipVerify, tcVerboseOpt)
 	if err != nil {
 		log.Fatalf("can not create tcp client: %v", err)
 	}

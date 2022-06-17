@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"github.com/potix/regapweb/handler"
+	"github.com/potix/regapweb/message"
 	"github.com/potix/regaprelay/gamepad"
 	"sync"
 	"crypto/tls"
@@ -43,47 +43,60 @@ func TcpClientSkipVerify(skipVerify bool) TcpClientOption {
 type TcpClient struct {
 	verbose         bool
 	serverHostPort  string
+	name            string
 	digest          string
 	tlsConfig       *tls.Config
 	gamepad         *gamepad.Gamepad
 	connMutex       sync.Mutex
 	conn            net.Conn
 	stopCh          chan int
-	remoteGamepadId string
-	uid		string
-	peerUid		string
+	gamepadId	string
+	delivererId	string
+	controllerId	string
 }
 
-func (t *TcpClient) safeConnWrite(msgBytes []byte) error  {
+func (t *TcpClient) safeConnWriteMessage(msg *message.Message) error  {
+	msgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return fmt.Errorf("can not marshal to json: %v", err)
+	}
+	msgBytes = append(msgBytes, byte('\n'))
 	t.connMutex.Lock()
 	defer t.connMutex.Unlock()
 	if t.conn == nil {
 		log.Printf("no connection")
 		return nil
 	}
-	 _, err := t.conn.Write(msgBytes)
+	 _, err = t.conn.Write(msgBytes)
 	if err != nil {
 		return fmt.Errorf("can not write message: %w", err)
 	}
 	return nil
 }
 
-func (h *TcpClient) startPingLoop(conn net.Conn, pingLoopStopChan chan int) {
+func (t *TcpClient) writeMessage(conn net.Conn, msg *message.Message) error  {
+	msgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return fmt.Errorf("can not marshal to json: %w", err)
+	}
+	msgBytes = append(msgBytes, byte('\n'))
+	 _, err = conn.Write(msgBytes)
+	if err != nil {
+		return fmt.Errorf("can not write message: %w", err)
+	}
+	return nil
+}
+
+func (t *TcpClient) startPingLoop(conn net.Conn, pingLoopStopChan chan int) {
         ticker := time.NewTicker(10 * time.Second)
         defer ticker.Stop()
         for {
                 select {
                 case <-ticker.C:
-                        msg := &handler.CommonMessage{
-                                Command: "ping",
+                        msg := &message.Message{
+                                MsgType: message.MsgTypePing,
                         }
-                        msgBytes, err := json.Marshal(msg)
-                        if err != nil {
-                                log.Printf("can not unmarshal to json: %v", err)
-                                break
-                        }
-			msgBytes = append(msgBytes, byte('\n'))
-                        _, err = conn.Write(msgBytes)
+			err := t.writeMessage(conn, msg)
                         if err != nil {
 				log.Printf("can not write ping message: %v", err)
 				return
@@ -95,32 +108,28 @@ func (h *TcpClient) startPingLoop(conn net.Conn, pingLoopStopChan chan int) {
 }
 
 func (t *TcpClient) handshake(conn net.Conn) (string, error) {
-	var remoteGamepadId string
-	msg := &handler.TcpClientRegisterRequest{
-		CommonMessage: &handler.CommonMessage{
-			Command: "registerRequest",
+	var gamepadId string
+	msg := &message.Message{
+		MsgType: message.MsgTypeGamepadHandshakeReq,
+		GamepadHandshakeRequest: &message.GamepadHandshakeRequest {
+			Name: t.name,
+			Digest: t.digest,
 		},
-		Digest: t.digest,
 	}
-	msgBytes, err := json.Marshal(msg)
+	err := t.writeMessage(conn, msg)
 	if err != nil {
-		return remoteGamepadId, fmt.Errorf("can not marshal to json in handshake: %w", err)
+		return gamepadId, fmt.Errorf("can not write gpHandshakeReq: %w", err)
 	}
-	msgBytes = append(msgBytes, byte('\n'))
-	_, err = conn.Write(msgBytes)
-	if err != nil {
-		return remoteGamepadId, fmt.Errorf("can not write registerRequest: %w", err)
-	}
-        msgBytes = make([]byte, 0, 2048)
+        msgBytes := make([]byte, 0, 4096)
         rbufio := bufio.NewReader(conn)
 	for {
 		err := conn.SetReadDeadline(time.Now().Add(5 * time.Second))
 		if err != nil {
-			return remoteGamepadId, fmt.Errorf("can not set read deadline: %w", err)
+			return gamepadId, fmt.Errorf("can not set read deadline: %w", err)
 		}
 		patialMsgBytes, isPrefix, err := rbufio.ReadLine()
 		if err != nil {
-			return remoteGamepadId, fmt.Errorf("can not read message: %w", err)
+			return gamepadId, fmt.Errorf("can not read message: %w", err)
 		} else if isPrefix {
 			// patial message
 			msgBytes = append(msgBytes, patialMsgBytes...)
@@ -128,20 +137,21 @@ func (t *TcpClient) handshake(conn net.Conn) (string, error) {
 		} else {
 			// entire message
 			msgBytes = append(msgBytes, patialMsgBytes...)
-			var msg handler.GamepadMessage
+			var msg message.Message
 			if err := json.Unmarshal(msgBytes, &msg); err != nil {
 				msgBytes = msgBytes[:0]
-				return remoteGamepadId, fmt.Errorf("can not unmarshal message: %w", err)
+				return gamepadId, fmt.Errorf("can not unmarshal message: %w", err)
 			}
 			msgBytes = msgBytes[:0]
-			if msg.Command == "registerResponse" {
-				if msg.RemoteGamepadId == "" {
-					return remoteGamepadId, fmt.Errorf("no remote gamepad id in register response")
+			if msg.MsgType == message.MsgTypeGamepadHandshakeRes {
+				if msg.GamepadHandshakeResponse == nil ||
+				   msg.GamepadHandshakeResponse.GamepadId == "" {
+					return gamepadId, fmt.Errorf("no gamepad id in handshake response")
 				}
-				remoteGamepadId = msg.RemoteGamepadId
-				return remoteGamepadId, nil
+				gamepadId = msg.GamepadHandshakeResponse.GamepadId
+				return gamepadId, nil
 			} else {
-				return remoteGamepadId, fmt.Errorf("recieved invalid message: %w", msg.Command)
+				return gamepadId, fmt.Errorf("recieved invalid message: %w", msg.MsgType)
 			}
 		}
 	}
@@ -151,15 +161,15 @@ func (t *TcpClient) communicationLoop(conn net.Conn) error {
 	if t.verbose {
 		log.Printf("start handshake")
 	}
-        remoteGamepadId, err := t.handshake(conn)
+        gamepadId, err := t.handshake(conn)
         if err != nil {
                 return fmt.Errorf("can not handshakea: %w", err)
         }
 	if t.verbose {
 		log.Printf("end handshake")
 	}
-	t.remoteGamepadId = remoteGamepadId
-	log.Printf("remoteGamepadId = %v", t.remoteGamepadId)
+	t.gamepadId = gamepadId
+	log.Printf("gamepadId = %v", t.gamepadId)
 	conn.SetDeadline(time.Time{})
         pingStopChan := make(chan int)
         go t.startPingLoop(conn, pingStopChan)
@@ -177,47 +187,80 @@ func (t *TcpClient) communicationLoop(conn net.Conn) error {
 		} else {
 			// entire message
 			msgBytes = append(msgBytes, patialMsgBytes...)
-			var msg handler.GamepadMessage
+			var msg message.Message
 			if err := json.Unmarshal(msgBytes, &msg); err != nil {
 				log.Printf("can not unmarshal message: %v, %v", string(msgBytes), err)
 				msgBytes = msgBytes[:0]
 				continue
 			}
 			msgBytes = msgBytes[:0]
-			if msg.Command == "ping" {
+			if msg.MsgType == message.MsgTypePing {
 				if t.verbose {
 					log.Printf("recieved ping")
 				}
 				continue
-			} else if msg.Command == "vibrationResponse" {
-				if msg.Error != "" {
-					log.Printf("error vibration request: %v", msg.Error)
-				}
-			} else if msg.Command == "stateRequest" {
-				var errMsg string
-				if msg.RemoteGamepadId == t.remoteGamepadId {
-					t.uid = msg.Uid
-					t.peerUid = msg.PeerUid
-					t.gamepad.UpdateState(msg.State)
-				} else {
-					errMsg = fmt.Sprintf("remote gamepad id is mismatch (act) %v, (exp) %v", msg.RemoteGamepadId, t.remoteGamepadId)
-				}
-				resMsg := &handler.GamepadMessage{
-					CommonMessage: &handler.CommonMessage{
-						Command: "stateResponse",
-					},
-					Error: errMsg,
-				}
-				resMsgBytes, err := json.Marshal(resMsg)
-				if err != nil {
-					log.Printf("can not marshal to json in communicationLoop: %v", err)
+			} else if msg.MsgType == message.MsgTypeGamepadConnectReq {
+				if msg.GamepadConnectRequest == nil ||
+				   msg.GamepadConnectRequest.DelivererId == "" ||
+				   msg.GamepadConnectRequest.ControllerId == "" ||
+				   msg.GamepadConnectRequest.GamepadId == "" {
+					log.Printf("no gamepad connect request parameter: %v", msg.GamepadConnectRequest)
+					resMsg := &message.Message{
+						MsgType: message.MsgTypeGamepadConnectRes,
+						Error: &message.Error{
+							Message: "no gamepad connect request parameter",
+						},
+						GamepadConnectResponse: &message.GamepadConnectResponse{
+							DelivererId: msg.GamepadConnectRequest.DelivererId,
+							ControllerId: msg.GamepadConnectRequest.ControllerId,
+							GamepadId: msg.GamepadConnectRequest.GamepadId,
+						},
+					}
+					err = t.writeMessage(conn, resMsg)
+					if err != nil {
+						log.Printf("can not write gamepad connect response: %v", err)
+						return fmt.Errorf("can not write gamepad connect response: %w", err)
+					}
 					continue
 				}
-				resMsgBytes = append(resMsgBytes, byte('\n'))
-				_, err = conn.Write(resMsgBytes)
-				if err != nil {
-                                        return fmt.Errorf("can not write state response message: %v", err)
+				t.delivererId = msg.GamepadConnectRequest.DelivererId
+				t.controllerId = msg.GamepadConnectRequest.ControllerId
+				t.gamepadId = msg.GamepadConnectRequest.GamepadId
+				resMsg := &message.Message{
+					MsgType: message.MsgTypeGamepadConnectRes,
+					GamepadConnectResponse: &message.GamepadConnectResponse{
+						DelivererId: msg.GamepadConnectRequest.DelivererId,
+						ControllerId: msg.GamepadConnectRequest.ControllerId,
+						GamepadId: msg.GamepadConnectRequest.GamepadId,
+					},
 				}
+				err = t.writeMessage(conn, resMsg)
+				if err != nil {
+					log.Printf("can not write gamepad connect response: %v", err)
+					return fmt.Errorf("can not write gamepad connect response: %w", err)
+				}
+			} else if msg.MsgType == message.MsgTypeGamepadConnectServerError {
+				if msg.Error != nil && msg.Error.Message != "" {
+					log.Printf("error has occured in gpConnectRes: %v", msg.Error.Message)
+				}
+			} else if msg.MsgType == message.MsgTypeGamepadState {
+				if msg.GamepadState == nil ||
+				   msg.GamepadState.DelivererId == "" ||
+				   msg.GamepadState.ControllerId == "" ||
+				   msg.GamepadState.GamepadId == "" {
+					log.Printf("no gamepad state request parameter: %v", msg.GamepadState)
+					continue
+				}
+				if msg.GamepadState.GamepadId != t.gamepadId ||
+				   msg.GamepadState.DelivererId != t.delivererId ||
+				   msg.GamepadState.ControllerId != t.controllerId {
+					log.Printf("ids are mismatch: gamepadId: (act) %v, (exp) %v, delivererId: (act) %v, (exp) %v, controllerId: (act) %v, (exp) %v",
+						 msg.GamepadState.GamepadId, t.gamepadId, msg.GamepadState.DelivererId, t.delivererId, msg.GamepadState.ControllerId, t.controllerId)
+					continue
+				}
+				t.gamepad.UpdateState(msg.GamepadState)
+			} else {
+				log.Printf("unsupported message: %v", msg.MsgType)
 			}
 		}
 	}
@@ -253,26 +296,21 @@ func (t *TcpClient) reconnectLoop() {
 	}
 }
 
-func (t *TcpClient) onVibration(vibration *handler.GamepadVibrationMessage) {
-	if t.uid == "" || t.peerUid == "" || t.remoteGamepadId == "" {
+func (t *TcpClient) onVibration(vibration *message.GamepadVibration) {
+	if t.delivererId== "" || t.controllerId == "" || t.gamepadId == "" {
+		if t.verbose {
+			log.Printf("skip vibration because no ids")
+		}
 		return
 	}
-	msg := &handler.GamepadMessage {
-	        CommonMessage: &handler.CommonMessage{
-			Command: "vibrationRequest",
-		},
-		Uid: t.uid,
-		PeerUid: t.peerUid,
-		RemoteGamepadId: t.remoteGamepadId,
-		Vibration: vibration,
+	vibration.DelivererId = t.delivererId
+	vibration.ControllerId = t.controllerId
+	vibration.GamepadId = t.gamepadId
+	msg := &message.Message {
+		MsgType: message.MsgTypeGamepadVibration,
+		GamepadVibration: vibration,
 	}
-	msgBytes, err := json.Marshal(msg)
-	if err != nil {
-		log.Printf("can not marshal to json in onVibration: %v", err)
-		return
-	}
-	msgBytes = append(msgBytes, byte('\n'))
-	err = t.safeConnWrite(msgBytes)
+	err := t.safeConnWriteMessage(msg)
 	if err != nil {
 		log.Printf("can not write vibration request message: %v", err)
 	}
@@ -294,7 +332,7 @@ func (t *TcpClient) Stop() {
 	t.connMutex.Unlock()
 }
 
-func NewTcpClient(serverHostPort string, secret string, gamepad *gamepad.Gamepad, opts ...TcpClientOption) (*TcpClient, error) {
+func NewTcpClient(serverHostPort string, name string, secret string, gamepad *gamepad.Gamepad, opts ...TcpClientOption) (*TcpClient, error) {
         baseOpts := defaultTcpClientOptions()
         for _, opt := range opts {
                 if opt == nil {
@@ -315,6 +353,7 @@ func NewTcpClient(serverHostPort string, secret string, gamepad *gamepad.Gamepad
         return &TcpClient{
                 verbose: baseOpts.verbose,
 		serverHostPort: serverHostPort,
+		name: name,
 		digest: digest,
                 tlsConfig: conf,
                 gamepad: gamepad,

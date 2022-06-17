@@ -2,7 +2,7 @@ package watcher
 
 import (
         "github.com/potix/regaprelay/gamepad"
-	"github.com/potix/regapweb/handler"
+	"github.com/potix/regapweb/message"
 	"github.com/MarinX/keylogger"
         "log"
         "fmt"
@@ -127,20 +127,20 @@ func (k *KeyboardWatcher) updateState(event keylogger.InputEvent) {
 	// 何か変化があったらgamepadに送る
 	if changed || shiftChanged {
 		if k.mode == ModeBulk {
-			buttons := make([]*handler.GamepadButtonMessage, 18)
+			buttons := make([]*message.GamepadButtonState, 18)
 			for i, key := range k.gamepadButtonsOrder {
 				pressed, ok := k.buttonsState[key]
 				if !ok {
 					log.Fatalf("not found key (%v,%v)", i, key)
 				}
 				if pressed {
-					buttons[i] = &handler.GamepadButtonMessage{
+					buttons[i] = &message.GamepadButtonState{
 						Pressed: true,
 						Touched: true,
 						Value: 1.0,
 					}
 				} else {
-					buttons[i] = &handler.GamepadButtonMessage{
+					buttons[i] = &message.GamepadButtonState{
 						Pressed: false,
 						Touched: false,
 						Value: 0.0,
@@ -184,11 +184,11 @@ func (k *KeyboardWatcher) updateState(event keylogger.InputEvent) {
 					}
 				}
 			}
-			gamepadStateMessage := &handler.GamepadStateMessage{
+			gamepadState := &message.GamepadState{
 				Buttons: buttons,
 				Axes: axes,
 			}
-			k.gamepad.UpdateState(gamepadStateMessage)
+			k.gamepad.UpdateState(gamepadState)
 		} else if k.mode == ModeSplit {
 			for key, pressed := range k.buttonsState {
 				buttonName, ok := k.gamepadButtonsMap[key]

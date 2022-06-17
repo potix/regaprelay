@@ -2,7 +2,7 @@ package gamepad
 
 import (
 	"log"
-	"github.com/potix/regapweb/handler"
+	"github.com/potix/regapweb/message"
 )
 
 type GamepadModel string
@@ -40,13 +40,11 @@ const (
         ButtonChargingGrip
 )
 
-type OnVibration func(*handler.GamepadVibrationMessage)
-
 type BackendIf interface {
 	Setup() error
 	Start() error
 	Stop()
-	UpdateState(*handler.GamepadStateMessage) error
+	UpdateState(*message.GamepadState) error
 	Press([]ButtonName) error
         Release([]ButtonName) error
         StickL(float64, float64) error
@@ -56,12 +54,12 @@ type BackendIf interface {
 }
 
 type BaseBackend struct {
-	onVibrationCh           chan *handler.GamepadVibrationMessage
+	onVibrationCh           chan *message.GamepadVibration
 	stopVibrationListenerCh chan int
 }
 
 func (b *BaseBackend) StartVibrationListener(fn OnVibration) {
-	b.onVibrationCh = make(chan *handler.GamepadVibrationMessage)
+	b.onVibrationCh = make(chan *message.GamepadVibration)
 	b.stopVibrationListenerCh = make(chan int)
         go func() {
                 log.Printf("start vibration listener")
@@ -83,7 +81,7 @@ func (b *BaseBackend) StopVibrationListener() {
 	}
 }
 
-func (b *BaseBackend) SendVibration(vibration *handler.GamepadVibrationMessage) {
+func (b *BaseBackend) SendVibration(vibration *message.GamepadVibration) {
 	if b.onVibrationCh != nil {
 		b.onVibrationCh <- vibration
 	}

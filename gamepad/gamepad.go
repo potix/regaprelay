@@ -2,7 +2,7 @@ package gamepad
 
 import (
 	"fmt"
-	"github.com/potix/regapweb/handler"
+	"github.com/potix/regapweb/message"
 )
 
 type gamepadOptions struct {
@@ -53,6 +53,8 @@ type Gamepad struct {
         backendIf BackendIf
 }
 
+type OnVibration func(*message.GamepadVibration)
+
 func (g *Gamepad) StartVibrationListener(fn OnVibration) {
 	g.backendIf.StartVibrationListener(fn)
 }
@@ -60,7 +62,7 @@ func (g *Gamepad) StopVibrationListener() {
 	g.backendIf.StopVibrationListener()
 }
 
-func (g *Gamepad) UpdateState(state *handler.GamepadStateMessage) error {
+func (g *Gamepad) UpdateState(state *message.GamepadState) error {
 	return g.backendIf.UpdateState(state)
 }
 
